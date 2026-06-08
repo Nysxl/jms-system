@@ -29,7 +29,7 @@ export default async function handler(
       });
     } else if (req.method === 'PUT') {
       // Update job
-      const updates = req.body;
+      const _updates = req.body;
 
       return res.status(200).json({
         success: true,
