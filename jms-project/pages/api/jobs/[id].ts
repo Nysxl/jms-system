@@ -18,7 +18,7 @@ export default async function handler(
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
 
-  const { id } = req.query;
+  const { id: _ } = req.query;
 
   try {
     if (req.method === 'GET') {
