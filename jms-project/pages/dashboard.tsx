@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { JobCard } from '@/components/JobCard';
 import { CreateJobModal } from '@/components/CreateJobModal';
-import { Job, Customer } from '@/lib_types';
+import { Job, Customer } from '@/lib/types';
 import { useRouter } from 'next/router';
 
 export default function Dashboard() {
