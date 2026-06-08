@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Customer, Job } from '@/lib/types';
+import { Customer, Job, JobPriority } from '@/lib/types';
 interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -29,7 +29,10 @@ export const CreateJobModal: React.FC<CreateJobModalProps> = ({
       alert('Please fill in required fields');
       return;
     }
-    onSubmit(formData);
+    onSubmit({
+  ...formData,
+  priority: formData.priority as JobPriority,
+});
     setFormData({
       customer_id: '',
       title: '',
