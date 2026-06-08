@@ -3,7 +3,6 @@ import { Header } from '@/components/Header';
 import { JobCard } from '@/components/JobCard';
 import { CreateJobModal } from '@/components/CreateJobModal';
 import { Job, Customer } from '@/lib/types';
-import { useRouter } from 'next/router';
 
 export default function Dashboard() {
   const [jobs, setJobs] = useState<Job[]>([]);
