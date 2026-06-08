@@ -28,8 +28,6 @@ export default async function handler(
         data: null,
       });
     } else if (req.method === 'PUT') {
-      // Update job
-      const _updates = req.body;
 
       return res.status(200).json({
         success: true,
