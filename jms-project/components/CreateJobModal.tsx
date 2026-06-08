@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
-import { Customer, Job } from '@/lib_types';
-
+'@/lib/types'
 interface CreateJobModalProps {
   isOpen: boolean;
   onClose: () => void;
