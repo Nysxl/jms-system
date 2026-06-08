@@ -6,7 +6,6 @@ import { Job, Customer } from '@/lib/types';
 import { useRouter } from 'next/router';
 
 export default function Dashboard() {
-  const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [showCreateModal, setShowCreateModal] = useState(false);
