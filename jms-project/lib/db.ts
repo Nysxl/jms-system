@@ -1,5 +1,5 @@
 // Database utility functions for D1/SQLite
-import { Job, Customer, JobNote } from './lib/types';
+import { Job, Customer, JobNote } from '@/lib/types';
 
 export interface D1Database {
   prepare(sql: string): D1PreparedStatement;
