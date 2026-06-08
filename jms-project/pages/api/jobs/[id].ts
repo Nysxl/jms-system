@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { supabase } from '@/lib/supabase';
-import { ApiResponse, Job } from '@/lib/types';
+import { ApiResponse, Job } from '@/lib/ types';
 
 export default async function handler(
   req: NextApiRequest,
