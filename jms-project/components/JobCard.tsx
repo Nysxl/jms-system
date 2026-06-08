@@ -1,5 +1,5 @@
 import React from 'react';
-import { Job, Customer } from '@/lib_types';
+import { Job, Customer } from '@/lib/types';
 import Link from 'next/link';
 
 interface JobCardProps {
