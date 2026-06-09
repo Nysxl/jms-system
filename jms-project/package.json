@@ -1,14 +1,12 @@
 {
   "name": "jms-system",
   "version": "1.0.0",
-  "description": "Professional Job Management System with Cloudflare",
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "opennextjs-cloudflare build",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
     "start": "next start",
-    "lint": "next lint",
-    "wrangler:dev": "wrangler dev",
-    "wrangler:deploy": "wrangler deploy"
+    "lint": "next lint"
   },
   "dependencies": {
     "react": "^18.2.0",
@@ -29,6 +27,7 @@
     "@types/react": "^18.2.0",
     "@types/react-dom": "^18.2.0",
     "typescript": "^5.0.0",
-    "wrangler": "^3.20.0"
+    "@opennextjs/cloudflare": "latest",
+    "wrangler": "latest"
   }
 }
