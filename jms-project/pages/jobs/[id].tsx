@@ -180,7 +180,6 @@ export default function JobDetail() {
     setUploadingAttachment(true);
     const { data: { user } } = await supabase.auth.getUser();
     for (const file of Array.from(files)) {
-      const ext = file.name.split('.').pop();
       const path = `attachments/${user?.id}/${id}/${Date.now()}_${file.name}`;
       const { error: uploadError } = await supabase.storage.from('job-attachments').upload(path, file);
       if (uploadError) continue;
