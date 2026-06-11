@@ -28,7 +28,6 @@ export default function Login() {
         return;
       }
 
-      localStorage.setItem('auth_token', data.data.session.access_token);
       router.push('/dashboard');
     } catch (err: any) {
       setError('Something went wrong. Please try again.');
