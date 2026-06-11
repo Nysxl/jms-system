@@ -6,12 +6,9 @@ export default function Home() {
   const router = useRouter();
 
   useEffect(() => {
-    // Auto-redirect to dashboard if user is authenticated
-    // In production, check auth status
-    const isAuthenticated = localStorage.getItem('auth_token');
-    if (isAuthenticated) {
-      router.push('/dashboard');
-    }
+  supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) router.push('/dashboard');
+    });
   }, [router]);
 
   return (
