@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { supabase } from '@/lib/supabase';
 
 export default function Login() {
   const router = useRouter();
@@ -15,16 +16,18 @@ export default function Login() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password }),
+      const { data, error: authError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
       });
 
-      const data = await res.json();
+      if (authError) {
+        setError(authError.message);
+        return;
+      }
 
-      if (!data.success) {
-        setError(data.error || 'Login failed');
+      if (!data.session) {
+        setError('Login failed. Please try again.');
         return;
       }
 
@@ -39,8 +42,6 @@ export default function Login() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 flex items-center justify-center px-4">
       <div className="w-full max-w-md">
-
-        {/* Logo */}
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-500 rounded-lg flex items-center justify-center mx-auto mb-4">
             <span className="text-white font-bold text-2xl">JMS</span>
@@ -49,20 +50,15 @@ export default function Login() {
           <p className="text-slate-400 mt-2">Sign in to your account</p>
         </div>
 
-        {/* Card */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
-
             {error && (
               <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
                 {error}
               </div>
             )}
-
             <div>
-              <label className="block text-slate-300 text-sm font-medium mb-2">
-                Email address
-              </label>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Email address</label>
               <input
                 type="email"
                 value={email}
@@ -72,11 +68,8 @@ export default function Login() {
                 className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
               />
             </div>
-
             <div>
-              <label className="block text-slate-300 text-sm font-medium mb-2">
-                Password
-              </label>
+              <label className="block text-slate-300 text-sm font-medium mb-2">Password</label>
               <input
                 type="password"
                 value={password}
@@ -86,7 +79,6 @@ export default function Login() {
                 className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-3 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
               />
             </div>
-
             <button
               type="submit"
               disabled={isLoading}
@@ -94,7 +86,6 @@ export default function Login() {
             >
               {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
-
           </form>
 
           <p className="text-center text-slate-400 text-sm mt-6">
@@ -110,7 +101,6 @@ export default function Login() {
             ← Back to home
           </Link>
         </p>
-
       </div>
     </div>
   );
