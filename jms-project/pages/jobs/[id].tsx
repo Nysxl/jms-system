@@ -16,6 +16,25 @@ interface JobAttachment {
   uploaded_at: string;
 }
 
+interface LineItem {
+  id: string;
+  job_id: string;
+  user_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  inventory_id: string | null;
+}
+
+interface InventoryItem {
+  id: string;
+  name: string;
+  unit_price: number | null;
+  unit_cost: number | null;
+  sku: string | null;
+}
+
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
   'in-progress': 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
@@ -57,6 +76,8 @@ export default function JobDetail() {
   const [images, setImages] = useState<JobImage[]>([]);
   const [reports, setReports] = useState<ServiceReport[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
+  const [lineItems, setLineItems] = useState<LineItem[]>([]);
+  const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Notes
@@ -72,16 +93,23 @@ export default function JobDetail() {
   const [previewAttachment, setPreviewAttachment] = useState<JobAttachment | null>(null);
   const attachRef = useRef<HTMLInputElement>(null);
 
+  // Line items
+  const [showLineItemModal, setShowLineItemModal] = useState(false);
+  const [lineItemMode, setLineItemMode] = useState<'inventory' | 'writein'>('inventory');
+  const [selectedInventoryId, setSelectedInventoryId] = useState('');
+  const [writeInDesc, setWriteInDesc] = useState('');
+  const [lineQty, setLineQty] = useState('1');
+  const [linePrice, setLinePrice] = useState('');
+  const [savingLineItem, setSavingLineItem] = useState(false);
+  const [lineItemError, setLineItemError] = useState('');
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [inventorySearch, setInventorySearch] = useState('');
+
   // Service report modal
   const [showReportModal, setShowReportModal] = useState(false);
   const [editingReport, setEditingReport] = useState<ServiceReport | null>(null);
   const [reportForm, setReportForm] = useState({
-    title: '',
-    description: '',
-    work_performed: '',
-    parts_used: '',
-    labor_hours: '',
-    labor_rate: '',
+    title: '', description: '', work_performed: '', parts_used: '', labor_hours: '', labor_rate: '',
   });
   const [savingReport, setSavingReport] = useState(false);
   const [reportError, setReportError] = useState('');
@@ -95,7 +123,7 @@ export default function JobDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments()]);
+    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory()]);
     setIsLoading(false);
   };
 
@@ -126,6 +154,16 @@ export default function JobDetail() {
   const loadAttachments = async () => {
     const { data } = await supabase.from('job_attachments').select('*').eq('job_id', id).order('uploaded_at', { ascending: false });
     if (data) setAttachments(data);
+  };
+
+  const loadLineItems = async () => {
+    const { data } = await supabase.from('job_line_items').select('*').eq('job_id', id).order('created_at', { ascending: true });
+    if (data) setLineItems(data);
+  };
+
+  const loadInventory = async () => {
+    const { data } = await supabase.from('inventory').select('id, name, unit_price, unit_cost, sku').order('name', { ascending: true });
+    if (data) setInventoryItems(data);
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -201,6 +239,88 @@ export default function JobDetail() {
     loadAttachments();
   };
 
+  // Line items
+  const openAddLineItem = () => {
+    setLineItemMode('inventory');
+    setSelectedInventoryId('');
+    setWriteInDesc('');
+    setLineQty('1');
+    setLinePrice('');
+    setLineItemError('');
+    setInventorySearch('');
+    setShowLineItemModal(true);
+  };
+
+  const handleInventorySelect = (invId: string) => {
+    setSelectedInventoryId(invId);
+    const inv = inventoryItems.find(i => i.id === invId);
+    if (inv) setLinePrice((inv.unit_price || inv.unit_cost || 0).toString());
+  };
+
+  const handleSaveLineItem = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLineItemError('');
+    const qty = parseFloat(lineQty) || 1;
+    const price = parseFloat(linePrice) || 0;
+
+    if (lineItemMode === 'inventory' && !selectedInventoryId) {
+      setLineItemError('Please select an inventory item.');
+      return;
+    }
+    if (lineItemMode === 'writein' && !writeInDesc.trim()) {
+      setLineItemError('Description is required.');
+      return;
+    }
+
+    setSavingLineItem(true);
+    const { data: { session } } = await supabase.auth.getSession();
+
+    let description = writeInDesc;
+    let inventory_id = null;
+
+    if (lineItemMode === 'inventory') {
+      const inv = inventoryItems.find(i => i.id === selectedInventoryId);
+      description = inv?.name || '';
+      inventory_id = selectedInventoryId;
+    }
+
+    const { error } = await supabase.from('job_line_items').insert([{
+      job_id: id,
+      user_id: session?.user.id,
+      description,
+      quantity: qty,
+      unit_price: price,
+      amount: qty * price,
+      inventory_id,
+      created_at: new Date().toISOString(),
+    }]);
+
+    if (error) { setLineItemError(error.message); setSavingLineItem(false); return; }
+
+    // Update job total_amount
+    const newTotal = lineItems.reduce((sum, li) => sum + li.amount, 0) + (qty * price);
+    await supabase.from('jobs').update({ total_amount: newTotal, updated_at: new Date().toISOString() }).eq('id', id);
+
+    setSavingLineItem(false);
+    setShowLineItemModal(false);
+    await loadLineItems();
+    await loadJob();
+  };
+
+  const handleDeleteLineItem = async (item: LineItem) => {
+    await supabase.from('job_line_items').delete().eq('id', item.id);
+    const remaining = lineItems.filter(li => li.id !== item.id);
+    const newTotal = remaining.reduce((sum, li) => sum + li.amount, 0);
+    await supabase.from('jobs').update({ total_amount: newTotal, updated_at: new Date().toISOString() }).eq('id', id);
+    await loadLineItems();
+    await loadJob();
+  };
+
+  // Totals
+  const subtotal = lineItems.reduce((sum, li) => sum + li.amount, 0);
+  const gstAmount = gstEnabled ? subtotal * 0.1 : 0;
+  const total = subtotal + gstAmount;
+
   const openCreateReport = () => {
     setEditingReport(null);
     setReportForm({ title: job?.title || '', description: job?.description || '', work_performed: '', parts_used: '', labor_hours: '', labor_rate: '' });
@@ -250,6 +370,11 @@ export default function JobDetail() {
   const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';
   const formatDateTime = (d?: string) => d ? new Date(d).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
+  const filteredInventory = inventoryItems.filter(i =>
+    i.name.toLowerCase().includes(inventorySearch.toLowerCase()) ||
+    (i.sku || '').toLowerCase().includes(inventorySearch.toLowerCase())
+  );
+
   if (isLoading) return (
     <div className="min-h-screen bg-slate-950"><Header />
       <div className="text-center py-20 text-slate-400">Loading job...</div>
@@ -292,7 +417,7 @@ export default function JobDetail() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700">
             <div><p className="text-slate-500 text-xs mb-1">Scheduled</p><p className="text-white text-sm">{formatDate(job.scheduled_date)}</p></div>
             <div><p className="text-slate-500 text-xs mb-1">Created</p><p className="text-white text-sm">{formatDate(job.created_at)}</p></div>
-            <div><p className="text-slate-500 text-xs mb-1">Amount</p><p className="text-green-400 text-sm font-semibold">{job.total_amount ? `$${job.total_amount.toFixed(2)}` : '—'}</p></div>
+            <div><p className="text-slate-500 text-xs mb-1">Total</p><p className="text-green-400 text-sm font-semibold">{job.total_amount ? `$${job.total_amount.toFixed(2)}` : '—'}</p></div>
             <div><p className="text-slate-500 text-xs mb-1">Completed</p><p className="text-white text-sm">{formatDate(job.completed_date)}</p></div>
           </div>
           {job.description && (
@@ -305,6 +430,90 @@ export default function JobDetail() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
+
+            {/* Line Items */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold">Line Items</h3>
+                <div className="flex gap-2">
+                  <button onClick={openAddLineItem}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-4 py-1.5 rounded-lg transition">
+                    + Add Item
+                  </button>
+                </div>
+              </div>
+
+              {lineItems.length === 0 ? (
+                <div onClick={openAddLineItem}
+                  className="border-2 border-dashed border-slate-600 rounded-xl p-8 text-center cursor-pointer hover:border-blue-500 transition">
+                  <p className="text-3xl mb-2">🧾</p>
+                  <p className="text-slate-400 text-sm">Add inventory items or custom line items</p>
+                </div>
+              ) : (
+                <>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-sm">
+                      <thead>
+                        <tr className="border-b border-slate-700">
+                          <th className="text-left text-slate-400 font-medium pb-2">Description</th>
+                          <th className="text-right text-slate-400 font-medium pb-2 w-16">Qty</th>
+                          <th className="text-right text-slate-400 font-medium pb-2 w-24">Unit Price</th>
+                          <th className="text-right text-slate-400 font-medium pb-2 w-24">Amount</th>
+                          <th className="w-8 pb-2"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {lineItems.map(item => (
+                          <tr key={item.id} className="border-b border-slate-700/50 group">
+                            <td className="py-3 text-white">
+                              {item.description}
+                              {item.inventory_id && <span className="text-slate-500 text-xs ml-2">inventory</span>}
+                            </td>
+                            <td className="py-3 text-right text-slate-300">{item.quantity}</td>
+                            <td className="py-3 text-right text-slate-300">${item.unit_price.toFixed(2)}</td>
+                            <td className="py-3 text-right text-white font-medium">${item.amount.toFixed(2)}</td>
+                            <td className="py-3 text-right">
+                              <button onClick={() => handleDeleteLineItem(item)}
+                                className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition">✕</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="mt-4 pt-4 border-t border-slate-700 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-400 text-sm">Subtotal</span>
+                      <span className="text-white font-medium">${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <div
+                          onClick={() => setGstEnabled(g => !g)}
+                          className={`relative w-9 h-5 rounded-full transition ${gstEnabled ? 'bg-blue-500' : 'bg-slate-600'}`}
+                        >
+                          <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${gstEnabled ? 'translate-x-4' : ''}`} />
+                        </div>
+                        <span className="text-slate-400 text-sm">GST (10%)</span>
+                      </label>
+                      <span className="text-slate-300 text-sm">{gstEnabled ? `$${gstAmount.toFixed(2)}` : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+                      <span className="text-white font-semibold">Total</span>
+                      <span className="text-green-400 font-bold text-lg">${total.toFixed(2)}</span>
+                    </div>
+                    <Link
+                      href={`/jobs/${id}/invoice?gst=${gstEnabled}`}
+                      className="block w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition mt-2"
+                    >
+                      Generate Invoice
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Photos */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
@@ -349,7 +558,6 @@ export default function JobDetail() {
                 </button>
                 <input ref={attachRef} type="file" multiple onChange={handleAttachmentUpload} className="hidden" />
               </div>
-
               {attachments.length === 0 ? (
                 <div onClick={() => attachRef.current?.click()}
                   className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
@@ -367,42 +575,19 @@ export default function JobDetail() {
                       </div>
                       <div className="flex gap-2 flex-shrink-0">
                         {att.file_type === 'application/pdf' ? (
-                          <button
-                            onClick={() => setPreviewAttachment(att)}
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                          >
-                            View
-                          </button>
+                          <button onClick={() => setPreviewAttachment(att)}
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
                         ) : att.file_type.startsWith('image/') ? (
-                          <button
-                            onClick={() => setLightbox(att.file_url)}
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                          >
-                            View
-                          </button>
+                          <button onClick={() => setLightbox(att.file_url)}
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
                         ) : (
-                          <a
-                            href={att.file_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                          >
-                            Open
-                          </a>
+                          <a href={att.file_url} target="_blank" rel="noopener noreferrer"
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">Open</a>
                         )}
-                        <a
-                          href={att.file_url}
-                          download={att.file_name}
-                          className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                        >
-                          ↓
-                        </a>
-                        <button
-                          onClick={() => handleDeleteAttachment(att)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100"
-                        >
-                          ✕
-                        </button>
+                        <a href={att.file_url} download={att.file_name}
+                          className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">↓</a>
+                        <button onClick={() => handleDeleteAttachment(att)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100">✕</button>
                       </div>
                     </div>
                   ))}
@@ -489,6 +674,102 @@ export default function JobDetail() {
           </div>
         </div>
       </main>
+
+      {/* Add Line Item Modal */}
+      {showLineItemModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold">Add Line Item</h3>
+              <button onClick={() => setShowLineItemModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+            <div className="px-6 pt-4">
+              <div className="flex gap-2 mb-4">
+                <button
+                  onClick={() => setLineItemMode('inventory')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${lineItemMode === 'inventory' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                >
+                  From Inventory
+                </button>
+                <button
+                  onClick={() => setLineItemMode('writein')}
+                  className={`flex-1 py-2 rounded-lg text-sm font-medium transition ${lineItemMode === 'writein' ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-300 hover:bg-slate-600'}`}
+                >
+                  Write In
+                </button>
+              </div>
+            </div>
+            <form onSubmit={handleSaveLineItem} className="px-6 pb-6 space-y-4">
+              {lineItemError && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{lineItemError}</div>}
+
+              {lineItemMode === 'inventory' ? (
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Search Inventory</label>
+                  <input
+                    type="text"
+                    value={inventorySearch}
+                    onChange={e => setInventorySearch(e.target.value)}
+                    placeholder="Search by name or SKU..."
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition mb-2"
+                  />
+                  <div className="max-h-48 overflow-y-auto space-y-1">
+                    {filteredInventory.length === 0 ? (
+                      <p className="text-slate-500 text-sm text-center py-4">No items found.</p>
+                    ) : filteredInventory.map(inv => (
+                      <button
+                        key={inv.id}
+                        type="button"
+                        onClick={() => handleInventorySelect(inv.id)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm transition flex justify-between items-center ${
+                          selectedInventoryId === inv.id ? 'bg-blue-500/20 border border-blue-500/50 text-white' : 'bg-slate-900 hover:bg-slate-700 text-slate-300'
+                        }`}
+                      >
+                        <span>{inv.name}{inv.sku ? <span className="text-slate-500 ml-2 text-xs">{inv.sku}</span> : null}</span>
+                        <span className="text-slate-400 text-xs">${(inv.unit_price || inv.unit_cost || 0).toFixed(2)}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Description *</label>
+                  <input type="text" value={writeInDesc} onChange={e => setWriteInDesc(e.target.value)}
+                    placeholder="e.g. Call out fee, Travel, Custom work..."
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Quantity</label>
+                  <input type="number" min="0.01" step="0.01" value={lineQty} onChange={e => setLineQty(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Unit Price ($)</label>
+                  <input type="number" min="0" step="0.01" value={linePrice} onChange={e => setLinePrice(e.target.value)}
+                    placeholder="0.00"
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                </div>
+              </div>
+
+              {lineQty && linePrice && (
+                <div className="bg-slate-900 rounded-lg px-4 py-3 flex justify-between items-center">
+                  <span className="text-slate-400 text-sm">Line Total</span>
+                  <span className="text-white font-bold">${(parseFloat(lineQty) * parseFloat(linePrice)).toFixed(2)}</span>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowLineItemModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+                <button type="submit" disabled={savingLineItem} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                  {savingLineItem ? 'Adding...' : 'Add to Job'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Service Report Modal */}
       {showReportModal && (
