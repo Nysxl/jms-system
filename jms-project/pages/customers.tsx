@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { supabase } from '@/lib/supabase';
 import { Customer } from '@/lib/types';
@@ -16,6 +17,7 @@ const emptyForm = {
 };
 
 export default function Customers() {
+  const router = useRouter();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -27,8 +29,14 @@ export default function Customers() {
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
   useEffect(() => {
-    loadCustomers();
-  }, []);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) {
+        router.push('/login');
+      } else {
+        loadCustomers();
+      }
+    });
+  }, [router]);
 
   const loadCustomers = async () => {
     setIsLoading(true);
@@ -36,7 +44,6 @@ export default function Customers() {
       .from('customers')
       .select('*')
       .order('created_at', { ascending: false });
-
     if (!error && data) setCustomers(data);
     setIsLoading(false);
   };
@@ -75,20 +82,29 @@ export default function Customers() {
     }
 
     setIsSaving(true);
-    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      setFormError('You must be logged in.');
+      setIsSaving(false);
+      return;
+    }
 
     if (editingCustomer) {
       const { error } = await supabase
         .from('customers')
         .update({ ...form, updated_at: new Date().toISOString() })
         .eq('id', editingCustomer.id);
-
       if (error) { setFormError(error.message); setIsSaving(false); return; }
     } else {
       const { error } = await supabase
         .from('customers')
-        .insert([{ ...form, user_id: user?.id, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
-
+        .insert([{
+          ...form,
+          user_id: session.user.id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }]);
       if (error) { setFormError(error.message); setIsSaving(false); return; }
     }
 
@@ -115,7 +131,6 @@ export default function Customers() {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
 
-        {/* Page Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
             <h2 className="text-3xl font-bold text-white">Customers</h2>
@@ -129,7 +144,6 @@ export default function Customers() {
           </button>
         </div>
 
-        {/* Search */}
         <div className="mb-6">
           <input
             type="text"
@@ -140,7 +154,6 @@ export default function Customers() {
           />
         </div>
 
-        {/* Content */}
         {isLoading ? (
           <div className="text-center py-20 text-slate-400">Loading customers...</div>
         ) : filtered.length === 0 ? (
@@ -168,7 +181,6 @@ export default function Customers() {
                 key={customer.id}
                 className="bg-slate-800 border border-slate-700 rounded-xl p-6 flex flex-col gap-3 hover:border-slate-600 transition"
               >
-                {/* Avatar + Name */}
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
                     {customer.name.charAt(0).toUpperCase()}
@@ -181,7 +193,6 @@ export default function Customers() {
                   </div>
                 </div>
 
-                {/* Details */}
                 <div className="space-y-1 text-sm">
                   <p className="text-slate-300 truncate">✉️ {customer.email}</p>
                   {customer.phone && <p className="text-slate-300">📞 {customer.phone}</p>}
@@ -198,7 +209,6 @@ export default function Customers() {
                   </p>
                 )}
 
-                {/* Actions */}
                 <div className="flex gap-2 pt-2 mt-auto">
                   <button
                     onClick={() => openEdit(customer)}
@@ -219,7 +229,6 @@ export default function Customers() {
         )}
       </main>
 
-      {/* Create / Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
           <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
@@ -356,7 +365,6 @@ export default function Customers() {
         </div>
       )}
 
-      {/* Delete Confirmation */}
       {deleteConfirm && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-sm text-center">
