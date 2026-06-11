@@ -1,14 +1,16 @@
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/router';
+import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { JobCard } from '@/components/JobCard';
-import { CreateJobModal } from '@/components/CreateJobModal';
+import { supabase } from '@/lib/supabase';
 import { Job, Customer } from '@/lib/types';
 
 export default function Dashboard() {
+  const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
@@ -17,56 +19,38 @@ export default function Dashboard() {
   });
 
   useEffect(() => {
-    // Load jobs and customers on mount
-    loadJobs();
-    loadCustomers();
-  }, []);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!session) { router.push('/login'); return; }
+      loadData();
+    });
+  }, [router]);
 
-  const loadJobs = async () => {
-    // In production, fetch from API
-    setJobs([]);
-    updateStats([]);
-  };
+  const loadData = async () => {
+    setIsLoading(true);
+    const [jobsRes, custRes] = await Promise.all([
+      supabase.from('jobs').select('*').order('created_at', { ascending: false }).limit(6),
+      supabase.from('customers').select('*'),
+    ]);
 
-  const loadCustomers = async () => {
-    // In production, fetch from API
-    setCustomers([]);
-  };
+    const jobsList = jobsRes.data || [];
+    const custList = custRes.data || [];
 
-  const updateStats = (jobsList: Job[]) => {
+    setJobs(jobsList);
+    setCustomers(custList);
     setStats({
       totalJobs: jobsList.length,
       activeJobs: jobsList.filter(j => j.status === 'in-progress').length,
       completedJobs: jobsList.filter(j => j.status === 'completed').length,
       pendingJobs: jobsList.filter(j => j.status === 'pending').length,
     });
-  };
 
-  const handleCreateJob = async (jobData: any) => {
-    setIsLoading(true);
-    try {
-      // In production, send to API
-      const newJob: Job = {
-        id: `job_${Date.now()}`,
-        user_id: 'current_user',
-        customer_id: jobData.customer_id,
-        title: jobData.title,
-        description: jobData.description,
-        status: 'pending',
-        priority: jobData.priority,
-        scheduled_date: jobData.scheduled_date,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
-
-      setJobs([newJob, ...jobs]);
-      updateStats([newJob, ...jobs]);
-      setShowCreateModal(false);
-    } catch (error) {
-      console.error('Error creating job:', error);
-    } finally {
-      setIsLoading(false);
+    // Get total count separately since we limited to 6
+    const { count } = await supabase.from('jobs').select('*', { count: 'exact', head: true });
+    if (count !== null) {
+      setStats(s => ({ ...s, totalJobs: count }));
     }
+
+    setIsLoading(false);
   };
 
   return (
@@ -74,45 +58,62 @@ export default function Dashboard() {
       <Header />
 
       <main className="max-w-7xl mx-auto px-6 py-8">
+
+        <div className="mb-8">
+          <h2 className="text-3xl font-bold text-white">Dashboard</h2>
+          <p className="text-slate-400 mt-1">Welcome back — here's what's going on</p>
+        </div>
+
         {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-12">
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-lg border border-slate-700 p-6">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-xl border border-slate-700 p-6">
             <p className="text-slate-400 text-sm">Total Jobs</p>
             <p className="text-3xl font-bold text-white mt-2">{stats.totalJobs}</p>
           </div>
-          <div className="bg-gradient-to-br from-blue-900 to-slate-900 rounded-lg border border-slate-700 p-6">
+          <div className="bg-gradient-to-br from-blue-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
             <p className="text-slate-400 text-sm">Active</p>
             <p className="text-3xl font-bold text-blue-400 mt-2">{stats.activeJobs}</p>
           </div>
-          <div className="bg-gradient-to-br from-yellow-900 to-slate-900 rounded-lg border border-slate-700 p-6">
+          <div className="bg-gradient-to-br from-yellow-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
             <p className="text-slate-400 text-sm">Pending</p>
             <p className="text-3xl font-bold text-yellow-400 mt-2">{stats.pendingJobs}</p>
           </div>
-          <div className="bg-gradient-to-br from-green-900 to-slate-900 rounded-lg border border-slate-700 p-6">
+          <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
             <p className="text-slate-400 text-sm">Completed</p>
             <p className="text-3xl font-bold text-green-400 mt-2">{stats.completedJobs}</p>
           </div>
         </div>
 
-        {/* Jobs Section */}
-        <div className="mb-8">
+        {/* Recent Jobs */}
+        <div>
           <div className="flex justify-between items-center mb-6">
-            <h2 className="text-2xl font-bold text-white">Recent Jobs</h2>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded transition"
-            >
-              + Create Job
-            </button>
+            <h3 className="text-xl font-bold text-white">Recent Jobs</h3>
+            <div className="flex gap-3">
+              <Link href="/jobs" className="text-slate-400 hover:text-white text-sm transition">
+                View all →
+              </Link>
+              <Link href="/jobs/new"
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-5 rounded-lg transition text-sm">
+                + Create Job
+              </Link>
+            </div>
           </div>
 
-          {jobs.length === 0 ? (
-            <div className="bg-slate-800 rounded-lg border border-slate-700 p-12 text-center">
-              <p className="text-slate-400">No jobs yet. Create your first job to get started!</p>
+          {isLoading ? (
+            <div className="text-center py-16 text-slate-400">Loading...</div>
+          ) : jobs.length === 0 ? (
+            <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
+              <p className="text-5xl mb-4">📋</p>
+              <p className="text-white font-semibold mb-2">No jobs yet</p>
+              <p className="text-slate-400 text-sm mb-6">Create your first job to get started.</p>
+              <Link href="/jobs/new"
+                className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition">
+                + Create Job
+              </Link>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {jobs.map((job) => (
+              {jobs.map(job => (
                 <JobCard
                   key={job.id}
                   job={job}
@@ -122,15 +123,8 @@ export default function Dashboard() {
             </div>
           )}
         </div>
-      </main>
 
-      <CreateJobModal
-        isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
-        onSubmit={handleCreateJob}
-        customers={customers}
-        isLoading={isLoading}
-      />
+      </main>
     </div>
   );
 }
