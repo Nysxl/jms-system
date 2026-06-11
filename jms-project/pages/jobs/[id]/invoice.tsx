@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
 import { Job, Customer } from '@/lib/types';
@@ -34,6 +34,20 @@ interface JobAttachment {
   file_type: string;
 }
 
+interface RenderedPdf {
+  attachmentId: string;
+  fileName: string;
+  pages: string[]; // base64 image data URLs
+}
+
+const PAYMENT_TERMS = [
+  { label: '7 days', days: 7 },
+  { label: '14 days', days: 14 },
+  { label: '30 days', days: 30 },
+  { label: '60 days', days: 60 },
+  { label: 'Custom', days: -1 },
+];
+
 export default function InvoicePage() {
   const router = useRouter();
   const { id, gst } = router.query as { id: string; gst: string };
@@ -44,8 +58,20 @@ export default function InvoicePage() {
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [gstEnabled, setGstEnabled] = useState(gst === 'true');
+
+  // Invoice options
+  const [gstEnabled, setGstEnabled] = useState(false);
+  const [paymentTermsDays, setPaymentTermsDays] = useState(14);
+  const [customDays, setCustomDays] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
+
+  // Attachment selection
+  const [selectedAttachments, setSelectedAttachments] = useState<Set<string>>(new Set());
+  const [showAttachPicker, setShowAttachPicker] = useState(false);
+
+  // PDF rendering
+  const [renderedPdfs, setRenderedPdfs] = useState<RenderedPdf[]>([]);
+  const [renderingPdfs, setRenderingPdfs] = useState(false);
 
   useEffect(() => {
     if (id) loadAll();
@@ -73,13 +99,63 @@ export default function InvoicePage() {
     }
     if (companyRes.data) setCompany(companyRes.data);
     if (lineRes.data) setLineItems(lineRes.data);
-    if (attachRes.data) setAttachments(attachRes.data);
+    if (attachRes.data) {
+      setAttachments(attachRes.data);
+      // Default: select all attachments
+      setSelectedAttachments(new Set(attachRes.data.map((a: JobAttachment) => a.id)));
+    }
 
-    // Generate invoice number from job id + date
     const now = new Date();
     setInvoiceNumber(`INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${id.slice(-6).toUpperCase()}`);
-
     setIsLoading(false);
+  };
+
+  // Render selected PDFs using pdfjs-dist
+  const renderPdfs = async () => {
+    const pdfsToRender = attachments.filter(
+      a => a.file_type === 'application/pdf' && selectedAttachments.has(a.id)
+    );
+    if (pdfsToRender.length === 0) {
+      setRenderedPdfs([]);
+      return;
+    }
+
+    setRenderingPdfs(true);
+    const results: RenderedPdf[] = [];
+
+    try {
+      const pdfjsLib = await import('pdfjs-dist');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
+
+      for (const att of pdfsToRender) {
+        try {
+          const response = await fetch(att.file_url);
+          const arrayBuffer = await response.arrayBuffer();
+          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const pages: string[] = [];
+
+          for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
+            const page = await pdf.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = document.createElement('canvas');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            const ctx = canvas.getContext('2d')!;
+            await page.render({ canvasContext: ctx, viewport }).promise;
+            pages.push(canvas.toDataURL('image/jpeg', 0.85));
+          }
+
+          results.push({ attachmentId: att.id, fileName: att.file_name, pages });
+        } catch (err) {
+          console.error(`Failed to render ${att.file_name}:`, err);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load pdfjs:', err);
+    }
+
+    setRenderedPdfs(results);
+    setRenderingPdfs(false);
   };
 
   const formatDate = (d?: string) =>
@@ -89,8 +165,22 @@ export default function InvoicePage() {
   const gstAmount = gstEnabled ? subtotal * 0.1 : 0;
   const total = subtotal + gstAmount;
 
+  const effectiveDays = paymentTermsDays === -1 ? (parseInt(customDays) || 14) : paymentTermsDays;
   const dueDate = new Date();
-  dueDate.setDate(dueDate.getDate() + 14);
+  dueDate.setDate(dueDate.getDate() + effectiveDays);
+
+  const toggleAttachment = (id: string) => {
+    setSelectedAttachments(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const selectedAttachmentsList = attachments.filter(a => selectedAttachments.has(a.id));
+  const selectedImages = selectedAttachmentsList.filter(a => a.file_type.startsWith('image/'));
+  const selectedPdfs = selectedAttachmentsList.filter(a => a.file_type === 'application/pdf');
+  const selectedOther = selectedAttachmentsList.filter(a => !a.file_type.startsWith('image/') && a.file_type !== 'application/pdf');
 
   if (isLoading) return (
     <div className="min-h-screen bg-white flex items-center justify-center text-slate-400">Loading invoice...</div>
@@ -102,19 +192,91 @@ export default function InvoicePage() {
 
   return (
     <>
-      {/* Toolbar - hidden when printing */}
-      <div className="print:hidden bg-slate-900 px-6 py-3 flex items-center justify-between sticky top-0 z-10">
+      {/* Toolbar */}
+      <div className="print:hidden bg-slate-900 px-6 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10">
         <button onClick={() => router.back()} className="text-slate-400 hover:text-white text-sm transition">← Back</button>
-        <div className="flex items-center gap-4">
+
+        <div className="flex flex-wrap items-center gap-4">
+          {/* GST toggle */}
           <label className="flex items-center gap-2 cursor-pointer">
-            <div
-              onClick={() => setGstEnabled(g => !g)}
-              className={`relative w-9 h-5 rounded-full transition ${gstEnabled ? 'bg-blue-500' : 'bg-slate-600'}`}
-            >
+            <div onClick={() => setGstEnabled(g => !g)}
+              className={`relative w-9 h-5 rounded-full transition ${gstEnabled ? 'bg-blue-500' : 'bg-slate-600'}`}>
               <div className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full transition-transform ${gstEnabled ? 'translate-x-4' : ''}`} />
             </div>
-            <span className="text-slate-300 text-sm">Include GST (10%)</span>
+            <span className="text-slate-300 text-sm">GST (10%)</span>
           </label>
+
+          {/* Payment terms */}
+          <div className="flex items-center gap-2">
+            <span className="text-slate-400 text-sm">Terms:</span>
+            <select
+              value={paymentTermsDays}
+              onChange={e => setPaymentTermsDays(parseInt(e.target.value))}
+              className="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-2 py-1 focus:outline-none focus:border-blue-500"
+            >
+              {PAYMENT_TERMS.map(t => (
+                <option key={t.days} value={t.days}>{t.label}</option>
+              ))}
+            </select>
+            {paymentTermsDays === -1 && (
+              <input
+                type="number"
+                min="1"
+                value={customDays}
+                onChange={e => setCustomDays(e.target.value)}
+                placeholder="days"
+                className="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-2 py-1 w-20 focus:outline-none focus:border-blue-500"
+              />
+            )}
+          </div>
+
+          {/* Attachment picker */}
+          {attachments.length > 0 && (
+            <div className="relative">
+              <button
+                onClick={() => setShowAttachPicker(p => !p)}
+                className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-3 py-1.5 rounded-lg transition"
+              >
+                📎 Attachments ({selectedAttachments.size}/{attachments.length})
+              </button>
+              {showAttachPicker && (
+                <div className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 z-20 w-72 shadow-xl">
+                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Include Attachments</p>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {attachments.map(att => (
+                      <label key={att.id} className="flex items-center gap-2 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          checked={selectedAttachments.has(att.id)}
+                          onChange={() => toggleAttachment(att.id)}
+                          className="accent-blue-500"
+                        />
+                        <span className="text-slate-300 text-sm group-hover:text-white transition truncate">
+                          {att.file_type === 'application/pdf' ? '📄' : att.file_type.startsWith('image/') ? '🖼️' : '📎'} {att.file_name}
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
+                    <button onClick={() => setSelectedAttachments(new Set(attachments.map(a => a.id)))}
+                      className="flex-1 text-xs text-blue-400 hover:text-blue-300 transition">Select all</button>
+                    <button onClick={() => setSelectedAttachments(new Set())}
+                      className="flex-1 text-xs text-slate-500 hover:text-slate-300 transition">Clear all</button>
+                  </div>
+                  {selectedPdfs.length > 0 && (
+                    <button
+                      onClick={() => { renderPdfs(); setShowAttachPicker(false); }}
+                      disabled={renderingPdfs}
+                      className="w-full mt-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs py-2 rounded-lg transition"
+                    >
+                      {renderingPdfs ? 'Rendering PDFs...' : '⚙️ Render PDFs inline'}
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
           <button onClick={() => window.print()}
             className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-6 py-2 rounded-lg transition">
             🖨️ Print / Save as PDF
@@ -122,6 +284,12 @@ export default function InvoicePage() {
         </div>
       </div>
 
+      {/* Close picker on outside click */}
+      {showAttachPicker && (
+        <div className="fixed inset-0 z-10 print:hidden" onClick={() => setShowAttachPicker(false)} />
+      )}
+
+      {/* Invoice */}
       <div className="bg-white min-h-screen">
         <div className="max-w-3xl mx-auto px-10 py-10 print:px-8 print:py-8">
 
@@ -150,7 +318,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* From / To */}
+          {/* From / Bill To */}
           <div className="grid grid-cols-2 gap-8 mb-8">
             <div>
               <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">From</h3>
@@ -200,7 +368,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* Line Items Table */}
+          {/* Line Items */}
           <table className="w-full text-sm mb-6 border border-slate-200 rounded-lg overflow-hidden">
             <thead className="bg-slate-100">
               <tr>
@@ -212,9 +380,7 @@ export default function InvoicePage() {
             </thead>
             <tbody>
               {lineItems.length === 0 ? (
-                <tr>
-                  <td colSpan={4} className="px-4 py-6 text-center text-slate-400 text-sm">No line items</td>
-                </tr>
+                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400 text-sm">No line items</td></tr>
               ) : lineItems.map((item, idx) => (
                 <tr key={item.id} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
                   <td className="px-4 py-3 text-slate-800">{item.description}</td>
@@ -246,19 +412,88 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* Payment details placeholder */}
+          {/* Payment details */}
           <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-8">
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Payment Details</h4>
-            <p className="text-slate-600 text-sm">Please make payment within 14 days of invoice date.</p>
+            <p className="text-slate-600 text-sm">
+              Payment is due within <strong>{effectiveDays} days</strong> of invoice date ({formatDate(dueDate.toISOString())}).
+            </p>
             {company?.email && <p className="text-slate-600 text-sm mt-1">For queries contact: {company.email}</p>}
           </div>
 
-          {/* Attachments */}
-          {attachments.length > 0 && (
+          {/* Image attachments */}
+          {selectedImages.length > 0 && (
+            <div className="mb-8">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Supporting Images</h4>
+              <div className="grid grid-cols-2 gap-4">
+                {selectedImages.map(att => (
+                  <div key={att.id}>
+                    <img src={att.file_url} alt={att.file_name} className="w-full rounded-lg border border-slate-200 object-contain" />
+                    <p className="text-slate-500 text-xs mt-1 text-center">{att.file_name}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* PDF attachments — rendered inline */}
+          {selectedPdfs.length > 0 && (
             <div className="mb-8">
               <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">Supporting Documents</h4>
+
+              {renderedPdfs.length === 0 && !renderingPdfs && (
+                <div className="print:hidden bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-4 py-3 mb-4">
+                  <p className="text-yellow-400 text-sm">
+                    Click <strong>⚙️ Render PDFs inline</strong> in the toolbar to embed PDF pages into this invoice before printing.
+                  </p>
+                </div>
+              )}
+
+              {renderingPdfs && (
+                <div className="text-center py-8 text-slate-400 text-sm">Rendering PDF pages...</div>
+              )}
+
+              {renderedPdfs.map(pdf => (
+                <div key={pdf.attachmentId} className="mb-6">
+                  <p className="text-slate-600 text-sm font-medium mb-2 print:text-slate-800">📄 {pdf.fileName}</p>
+                  <div className="space-y-2">
+                    {pdf.pages.map((pageData, i) => (
+                      <div key={i}>
+                        <img
+                          src={pageData}
+                          alt={`${pdf.fileName} page ${i + 1}`}
+                          className="w-full border border-slate-200 rounded"
+                        />
+                        {pdf.pages.length > 1 && (
+                          <p className="text-slate-400 text-xs text-center mt-1">Page {i + 1} of {pdf.pages.length}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Fallback links for non-rendered PDFs */}
+              {selectedPdfs
+                .filter(p => !renderedPdfs.find(r => r.attachmentId === p.id))
+                .map(att => (
+                  <div key={att.id} className="flex items-center gap-2 text-sm text-slate-600 mb-1 print:hidden">
+                    <span>📄</span>
+                    <a href={att.file_url} target="_blank" rel="noopener noreferrer"
+                      className="hover:text-blue-600 transition underline">{att.file_name}</a>
+                    <span className="text-slate-400 text-xs">(not yet rendered)</span>
+                  </div>
+                ))
+              }
+            </div>
+          )}
+
+          {/* Other file attachments */}
+          {selectedOther.length > 0 && (
+            <div className="mb-8">
+              <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Other Attachments</h4>
               <div className="space-y-1">
-                {attachments.map(att => (
+                {selectedOther.map(att => (
                   <div key={att.id} className="flex items-center gap-2 text-sm text-slate-600">
                     <span>📎</span>
                     <a href={att.file_url} target="_blank" rel="noopener noreferrer"
