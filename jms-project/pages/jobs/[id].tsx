@@ -5,6 +5,17 @@ import { Header } from '@/components/Header';
 import { supabase } from '@/lib/supabase';
 import { Job, Customer, JobNote, JobImage, ServiceReport } from '@/lib/types';
 
+interface JobAttachment {
+  id: string;
+  job_id: string;
+  user_id: string;
+  file_name: string;
+  file_url: string;
+  file_type: string;
+  file_size: number;
+  uploaded_at: string;
+}
+
 const statusColors: Record<string, string> = {
   pending: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30',
   'in-progress': 'bg-blue-500/10 text-blue-400 border border-blue-500/30',
@@ -19,6 +30,23 @@ const priorityColors: Record<string, string> = {
   urgent: 'text-red-400',
 };
 
+const fileIcon = (type: string) => {
+  if (type.startsWith('image/')) return '🖼️';
+  if (type === 'application/pdf') return '📄';
+  if (type.includes('word')) return '📝';
+  if (type.includes('sheet') || type.includes('excel')) return '📊';
+  if (type.includes('presentation') || type.includes('powerpoint')) return '📑';
+  if (type.includes('zip') || type.includes('compressed')) return '🗜️';
+  return '📎';
+};
+
+const formatSize = (bytes: number) => {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export default function JobDetail() {
   const router = useRouter();
   const { id } = router.query as { id: string };
@@ -28,6 +56,7 @@ export default function JobDetail() {
   const [notes, setNotes] = useState<JobNote[]>([]);
   const [images, setImages] = useState<JobImage[]>([]);
   const [reports, setReports] = useState<ServiceReport[]>([]);
+  const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   // Notes
@@ -37,6 +66,11 @@ export default function JobDetail() {
   // Photos
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Attachments
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const [previewAttachment, setPreviewAttachment] = useState<JobAttachment | null>(null);
+  const attachRef = useRef<HTMLInputElement>(null);
 
   // Service report modal
   const [showReportModal, setShowReportModal] = useState(false);
@@ -61,7 +95,7 @@ export default function JobDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports()]);
+    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments()]);
     setIsLoading(false);
   };
 
@@ -75,30 +109,23 @@ export default function JobDetail() {
   };
 
   const loadNotes = async () => {
-    const { data } = await supabase
-      .from('job_notes')
-      .select('*')
-      .eq('job_id', id)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('job_notes').select('*').eq('job_id', id).order('created_at', { ascending: false });
     if (data) setNotes(data);
   };
 
   const loadImages = async () => {
-    const { data } = await supabase
-      .from('job_images')
-      .select('*')
-      .eq('job_id', id)
-      .order('uploaded_at', { ascending: false });
+    const { data } = await supabase.from('job_images').select('*').eq('job_id', id).order('uploaded_at', { ascending: false });
     if (data) setImages(data);
   };
 
   const loadReports = async () => {
-    const { data } = await supabase
-      .from('service_reports')
-      .select('*')
-      .eq('job_id', id)
-      .order('created_at', { ascending: false });
+    const { data } = await supabase.from('service_reports').select('*').eq('job_id', id).order('created_at', { ascending: false });
     if (data) setReports(data);
+  };
+
+  const loadAttachments = async () => {
+    const { data } = await supabase.from('job_attachments').select('*').eq('job_id', id).order('uploaded_at', { ascending: false });
+    if (data) setAttachments(data);
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -107,11 +134,8 @@ export default function JobDetail() {
     setSavingNote(true);
     const { data: { user } } = await supabase.auth.getUser();
     await supabase.from('job_notes').insert([{
-      job_id: id,
-      user_id: user?.id,
-      content: newNote.trim(),
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
+      job_id: id, user_id: user?.id, content: newNote.trim(),
+      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
     }]);
     setNewNote('');
     setSavingNote(false);
@@ -128,38 +152,54 @@ export default function JobDetail() {
     if (!files || files.length === 0) return;
     setUploadingPhoto(true);
     const { data: { user } } = await supabase.auth.getUser();
-
     for (const file of Array.from(files)) {
       const ext = file.name.split('.').pop();
-      const path = `jobs/${id}/${Date.now()}.${ext}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('job-photos')
-        .upload(path, file);
-
+      const path = `jobs/${user?.id}/${id}/${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage.from('job-photos').upload(path, file);
       if (uploadError) continue;
-
       const { data: urlData } = supabase.storage.from('job-photos').getPublicUrl(path);
-
       await supabase.from('job_images').insert([{
-        job_id: id,
-        user_id: user?.id,
-        image_url: urlData.publicUrl,
-        file_name: file.name,
-        file_size: file.size,
-        uploaded_at: new Date().toISOString(),
+        job_id: id, user_id: user?.id, image_url: urlData.publicUrl,
+        file_name: file.name, file_size: file.size, uploaded_at: new Date().toISOString(),
       }]);
     }
-
     setUploadingPhoto(false);
     loadImages();
   };
 
   const handleDeletePhoto = async (image: JobImage) => {
     const path = image.image_url.split('/job-photos/')[1];
-    if (path) await supabase.storage.from('job-photos').remove([path]);
+    if (path) await supabase.storage.from('job-photos').remove([decodeURIComponent(path)]);
     await supabase.from('job_images').delete().eq('id', image.id);
     loadImages();
+  };
+
+  const handleAttachmentUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    setUploadingAttachment(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    for (const file of Array.from(files)) {
+      const ext = file.name.split('.').pop();
+      const path = `attachments/${user?.id}/${id}/${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage.from('job-attachments').upload(path, file);
+      if (uploadError) continue;
+      const { data: urlData } = supabase.storage.from('job-attachments').getPublicUrl(path);
+      await supabase.from('job_attachments').insert([{
+        job_id: id, user_id: user?.id, file_name: file.name,
+        file_url: urlData.publicUrl, file_type: file.type,
+        file_size: file.size, uploaded_at: new Date().toISOString(),
+      }]);
+    }
+    setUploadingAttachment(false);
+    loadAttachments();
+  };
+
+  const handleDeleteAttachment = async (attachment: JobAttachment) => {
+    const path = attachment.file_url.split('/job-attachments/')[1];
+    if (path) await supabase.storage.from('job-attachments').remove([decodeURIComponent(path)]);
+    await supabase.from('job_attachments').delete().eq('id', attachment.id);
+    loadAttachments();
   };
 
   const openCreateReport = () => {
@@ -172,12 +212,9 @@ export default function JobDetail() {
   const openEditReport = (report: ServiceReport) => {
     setEditingReport(report);
     setReportForm({
-      title: report.title || '',
-      description: report.description || '',
-      work_performed: report.work_performed || '',
-      parts_used: report.parts_used || '',
-      labor_hours: report.labor_hours?.toString() || '',
-      labor_rate: report.labor_rate?.toString() || '',
+      title: report.title || '', description: report.description || '',
+      work_performed: report.work_performed || '', parts_used: report.parts_used || '',
+      labor_hours: report.labor_hours?.toString() || '', labor_rate: report.labor_rate?.toString() || '',
     });
     setReportError('');
     setShowReportModal(true);
@@ -188,25 +225,19 @@ export default function JobDetail() {
     if (!reportForm.title.trim()) { setReportError('Title is required.'); return; }
     setSavingReport(true);
     const { data: { user } } = await supabase.auth.getUser();
-
     const payload = {
-      job_id: id,
-      user_id: user?.id,
-      title: reportForm.title,
-      description: reportForm.description,
-      work_performed: reportForm.work_performed,
+      job_id: id, user_id: user?.id, title: reportForm.title,
+      description: reportForm.description, work_performed: reportForm.work_performed,
       parts_used: reportForm.parts_used,
       labor_hours: reportForm.labor_hours ? parseFloat(reportForm.labor_hours) : null,
       labor_rate: reportForm.labor_rate ? parseFloat(reportForm.labor_rate) : null,
       updated_at: new Date().toISOString(),
     };
-
     if (editingReport) {
       await supabase.from('service_reports').update(payload).eq('id', editingReport.id);
     } else {
       await supabase.from('service_reports').insert([{ ...payload, created_at: new Date().toISOString() }]);
     }
-
     setSavingReport(false);
     setShowReportModal(false);
     loadReports();
@@ -221,15 +252,13 @@ export default function JobDetail() {
   const formatDateTime = (d?: string) => d ? new Date(d).toLocaleString('en-AU', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
 
   if (isLoading) return (
-    <div className="min-h-screen bg-slate-950">
-      <Header />
+    <div className="min-h-screen bg-slate-950"><Header />
       <div className="text-center py-20 text-slate-400">Loading job...</div>
     </div>
   );
 
   if (!job) return (
-    <div className="min-h-screen bg-slate-950">
-      <Header />
+    <div className="min-h-screen bg-slate-950"><Header />
       <div className="text-center py-20 text-slate-400">Job not found. <Link href="/jobs" className="text-blue-400 hover:underline">Back to jobs</Link></div>
     </div>
   );
@@ -237,14 +266,10 @@ export default function JobDetail() {
   return (
     <div className="min-h-screen bg-slate-950">
       <Header />
-
       <main className="max-w-5xl mx-auto px-6 py-8">
 
-        {/* Breadcrumb */}
         <div className="mb-6">
-          <Link href="/jobs" className="text-slate-500 hover:text-slate-300 text-sm transition">
-            ← Back to Jobs
-          </Link>
+          <Link href="/jobs" className="text-slate-500 hover:text-slate-300 text-sm transition">← Back to Jobs</Link>
         </div>
 
         {/* Job Header */}
@@ -254,43 +279,23 @@ export default function JobDetail() {
               <h2 className="text-2xl font-bold text-white mb-1">{job.title}</h2>
               <p className="text-slate-400">
                 {customer ? (
-                  <Link href={`/customers`} className="hover:text-blue-400 transition">
+                  <Link href="/customers" className="hover:text-blue-400 transition">
                     {customer.name}{customer.company_name ? ` — ${customer.company_name}` : ''}
                   </Link>
                 ) : 'Unknown Customer'}
               </p>
             </div>
             <div className="flex flex-wrap gap-2">
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[job.status]}`}>
-                {job.status}
-              </span>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-slate-700 ${priorityColors[job.priority]}`}>
-                {job.priority} priority
-              </span>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColors[job.status]}`}>{job.status}</span>
+              <span className={`px-3 py-1 rounded-full text-xs font-semibold bg-slate-700 ${priorityColors[job.priority]}`}>{job.priority} priority</span>
             </div>
           </div>
-
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-slate-700">
-            <div>
-              <p className="text-slate-500 text-xs mb-1">Scheduled</p>
-              <p className="text-white text-sm">{formatDate(job.scheduled_date)}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs mb-1">Created</p>
-              <p className="text-white text-sm">{formatDate(job.created_at)}</p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs mb-1">Amount</p>
-              <p className="text-green-400 text-sm font-semibold">
-                {job.total_amount ? `$${job.total_amount.toFixed(2)}` : '—'}
-              </p>
-            </div>
-            <div>
-              <p className="text-slate-500 text-xs mb-1">Completed</p>
-              <p className="text-white text-sm">{formatDate(job.completed_date)}</p>
-            </div>
+            <div><p className="text-slate-500 text-xs mb-1">Scheduled</p><p className="text-white text-sm">{formatDate(job.scheduled_date)}</p></div>
+            <div><p className="text-slate-500 text-xs mb-1">Created</p><p className="text-white text-sm">{formatDate(job.created_at)}</p></div>
+            <div><p className="text-slate-500 text-xs mb-1">Amount</p><p className="text-green-400 text-sm font-semibold">{job.total_amount ? `$${job.total_amount.toFixed(2)}` : '—'}</p></div>
+            <div><p className="text-slate-500 text-xs mb-1">Completed</p><p className="text-white text-sm">{formatDate(job.completed_date)}</p></div>
           </div>
-
           {job.description && (
             <div className="mt-4 pt-4 border-t border-slate-700">
               <p className="text-slate-500 text-xs mb-1">Description</p>
@@ -300,36 +305,21 @@ export default function JobDetail() {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-          {/* Left column: Notes + Photos */}
           <div className="lg:col-span-2 space-y-6">
 
             {/* Photos */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white font-semibold">Photos</h3>
-                <button
-                  onClick={() => fileRef.current?.click()}
-                  disabled={uploadingPhoto}
-                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition"
-                >
+                <button onClick={() => fileRef.current?.click()} disabled={uploadingPhoto}
+                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
                   {uploadingPhoto ? 'Uploading...' : '+ Add Photos'}
                 </button>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
+                <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
               </div>
-
               {images.length === 0 ? (
-                <div
-                  onClick={() => fileRef.current?.click()}
-                  className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition"
-                >
+                <div onClick={() => fileRef.current?.click()}
+                  className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
                   <p className="text-3xl mb-2">📷</p>
                   <p className="text-slate-400 text-sm">Click to upload job photos</p>
                 </div>
@@ -337,25 +327,90 @@ export default function JobDetail() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {images.map(img => (
                     <div key={img.id} className="relative group rounded-lg overflow-hidden aspect-square bg-slate-700">
-                      <img
-                        src={img.image_url}
-                        alt={img.file_name}
-                        className="w-full h-full object-cover cursor-pointer"
-                        onClick={() => setLightbox(img.image_url)}
-                      />
-                      <button
-                        onClick={() => handleDeletePhoto(img)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition"
-                      >
-                        ✕
-                      </button>
+                      <img src={img.image_url} alt={img.file_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                      <button onClick={() => handleDeletePhoto(img)}
+                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
                     </div>
                   ))}
-                  <div
-                    onClick={() => fileRef.current?.click()}
-                    className="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition"
-                  >
+                  <div onClick={() => fileRef.current?.click()}
+                    className="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition">
                     <span className="text-slate-500 text-2xl">+</span>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Attachments */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold">Attachments</h3>
+                <button onClick={() => attachRef.current?.click()} disabled={uploadingAttachment}
+                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
+                  {uploadingAttachment ? 'Uploading...' : '+ Add Files'}
+                </button>
+                <input ref={attachRef} type="file" multiple onChange={handleAttachmentUpload} className="hidden" />
+              </div>
+
+              {attachments.length === 0 ? (
+                <div onClick={() => attachRef.current?.click()}
+                  className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
+                  <p className="text-3xl mb-2">📎</p>
+                  <p className="text-slate-400 text-sm">Click to attach files — PDFs, Word docs, spreadsheets, and more</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {attachments.map(att => (
+                    <div key={att.id} className="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3 group">
+                      <span className="text-2xl flex-shrink-0">{fileIcon(att.file_type)}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white text-sm font-medium truncate">{att.file_name}</p>
+                        <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)}</p>
+                      </div>
+                      <div className="flex gap-2 flex-shrink-0">
+                        {att.file_type === 'application/pdf' ? (
+                          <button
+                            onClick={() => setPreviewAttachment(att)}
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                          >
+                            View
+                          </button>
+                        ) : att.file_type.startsWith('image/') ? (
+                          <button
+                            onClick={() => setLightbox(att.file_url)}
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                          >
+                            View
+                          </button>
+                        ) : (
+                          <a
+                            href={att.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                          >
+                            Open
+                          </a>
+                        )}
+                        <a
+                          href={att.file_url}
+                          download={att.file_name}
+                          className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
+                        >
+                          ↓
+                        </a>
+                        <button
+                          onClick={() => handleDeleteAttachment(att)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                  <div onClick={() => attachRef.current?.click()}
+                    className="flex items-center gap-3 border-2 border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-blue-500 transition">
+                    <span className="text-slate-500 text-xl">+</span>
+                    <span className="text-slate-500 text-sm">Add more files</span>
                   </div>
                 </div>
               )}
@@ -364,24 +419,12 @@ export default function JobDetail() {
             {/* Notes */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Notes</h3>
-
               <form onSubmit={handleAddNote} className="flex gap-2 mb-4">
-                <input
-                  type="text"
-                  value={newNote}
-                  onChange={e => setNewNote(e.target.value)}
-                  placeholder="Add a note..."
-                  className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                />
-                <button
-                  type="submit"
-                  disabled={savingNote || !newNote.trim()}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition"
-                >
-                  Add
-                </button>
+                <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..."
+                  className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                <button type="submit" disabled={savingNote || !newNote.trim()}
+                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition">Add</button>
               </form>
-
               {notes.length === 0 ? (
                 <p className="text-slate-500 text-sm text-center py-4">No notes yet.</p>
               ) : (
@@ -392,12 +435,8 @@ export default function JobDetail() {
                         <p className="text-slate-300 text-sm">{note.content}</p>
                         <p className="text-slate-600 text-xs mt-1">{formatDateTime(note.created_at)}</p>
                       </div>
-                      <button
-                        onClick={() => handleDeleteNote(note.id)}
-                        className="text-slate-600 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition"
-                      >
-                        ✕
-                      </button>
+                      <button onClick={() => handleDeleteNote(note.id)}
+                        className="text-slate-600 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition">✕</button>
                     </div>
                   ))}
                 </div>
@@ -405,24 +444,16 @@ export default function JobDetail() {
             </div>
           </div>
 
-          {/* Right column: Service Reports */}
+          {/* Right column */}
           <div className="space-y-4">
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-white font-semibold">Service Reports</h3>
-                <button
-                  onClick={openCreateReport}
-                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition"
-                >
-                  + New
-                </button>
+                <button onClick={openCreateReport}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition">+ New</button>
               </div>
-
               {reports.length === 0 ? (
-                <div className="text-center py-6">
-                  <p className="text-3xl mb-2">📄</p>
-                  <p className="text-slate-500 text-sm">No reports yet.</p>
-                </div>
+                <div className="text-center py-6"><p className="text-3xl mb-2">📄</p><p className="text-slate-500 text-sm">No reports yet.</p></div>
               ) : (
                 <div className="space-y-3">
                   {reports.map(report => (
@@ -430,24 +461,12 @@ export default function JobDetail() {
                       <p className="text-white text-sm font-medium mb-1">{report.title}</p>
                       <p className="text-slate-500 text-xs mb-3">{formatDate(report.created_at)}</p>
                       <div className="flex gap-2">
-                        <Link
-                          href={`/jobs/${id}/report?reportId=${report.id}`}
-                          className="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-white text-xs py-1.5 rounded-lg transition"
-                        >
-                          View / Print
-                        </Link>
-                        <button
-                          onClick={() => openEditReport(report)}
-                          className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-1.5 rounded-lg transition"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDeleteReport(report.id)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition"
-                        >
-                          ✕
-                        </button>
+                        <Link href={`/jobs/${id}/report?reportId=${report.id}`}
+                          className="flex-1 text-center bg-slate-700 hover:bg-slate-600 text-white text-xs py-1.5 rounded-lg transition">View / Print</Link>
+                        <button onClick={() => openEditReport(report)}
+                          className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs py-1.5 rounded-lg transition">Edit</button>
+                        <button onClick={() => handleDeleteReport(report.id)}
+                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition">✕</button>
                       </div>
                     </div>
                   ))}
@@ -455,7 +474,6 @@ export default function JobDetail() {
               )}
             </div>
 
-            {/* Customer info card */}
             {customer && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
                 <h3 className="text-white font-semibold mb-3">Customer</h3>
@@ -482,73 +500,41 @@ export default function JobDetail() {
               <button onClick={() => setShowReportModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
             </div>
             <form onSubmit={handleSaveReport} className="p-6 space-y-4">
-              {reportError && (
-                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{reportError}</div>
-              )}
+              {reportError && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{reportError}</div>}
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Report Title *</label>
-                <input
-                  type="text"
-                  value={reportForm.title}
-                  onChange={e => setReportForm({ ...reportForm, title: e.target.value })}
+                <input type="text" value={reportForm.title} onChange={e => setReportForm({ ...reportForm, title: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                  placeholder="Service Report — Job Title"
-                />
+                  placeholder="Service Report — Job Title" />
               </div>
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Job Description</label>
-                <textarea
-                  value={reportForm.description}
-                  onChange={e => setReportForm({ ...reportForm, description: e.target.value })}
-                  rows={3}
+                <textarea value={reportForm.description} onChange={e => setReportForm({ ...reportForm, description: e.target.value })} rows={3}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-none"
-                  placeholder="Brief description of the job..."
-                />
+                  placeholder="Brief description of the job..." />
               </div>
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Work Performed</label>
-                <textarea
-                  value={reportForm.work_performed}
-                  onChange={e => setReportForm({ ...reportForm, work_performed: e.target.value })}
-                  rows={4}
+                <textarea value={reportForm.work_performed} onChange={e => setReportForm({ ...reportForm, work_performed: e.target.value })} rows={4}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-none"
-                  placeholder="Detailed description of work carried out..."
-                />
+                  placeholder="Detailed description of work carried out..." />
               </div>
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Parts / Materials Used</label>
-                <textarea
-                  value={reportForm.parts_used}
-                  onChange={e => setReportForm({ ...reportForm, parts_used: e.target.value })}
-                  rows={2}
+                <textarea value={reportForm.parts_used} onChange={e => setReportForm({ ...reportForm, parts_used: e.target.value })} rows={2}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-none"
-                  placeholder="List parts and materials used..."
-                />
+                  placeholder="List parts and materials used..." />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block text-slate-300 text-sm font-medium mb-1">Labour Hours</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.5"
-                    value={reportForm.labor_hours}
-                    onChange={e => setReportForm({ ...reportForm, labor_hours: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="0.0"
-                  />
+                  <input type="number" min="0" step="0.5" value={reportForm.labor_hours} onChange={e => setReportForm({ ...reportForm, labor_hours: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" placeholder="0.0" />
                 </div>
                 <div>
                   <label className="block text-slate-300 text-sm font-medium mb-1">Labour Rate ($/hr)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.01"
-                    value={reportForm.labor_rate}
-                    onChange={e => setReportForm({ ...reportForm, labor_rate: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                    placeholder="0.00"
-                  />
+                  <input type="number" min="0" step="0.01" value={reportForm.labor_rate} onChange={e => setReportForm({ ...reportForm, labor_rate: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" placeholder="0.00" />
                 </div>
               </div>
               <div className="flex gap-3 pt-2">
@@ -562,13 +548,25 @@ export default function JobDetail() {
         </div>
       )}
 
-      {/* Lightbox */}
+      {/* PDF Preview Modal */}
+      {previewAttachment && (
+        <div className="fixed inset-0 bg-black/90 flex flex-col z-50">
+          <div className="flex items-center justify-between px-6 py-3 bg-slate-900 border-b border-slate-700">
+            <p className="text-white text-sm font-medium">{previewAttachment.file_name}</p>
+            <div className="flex gap-3">
+              <a href={previewAttachment.file_url} download={previewAttachment.file_name}
+                className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-1.5 rounded-lg transition">↓ Download</a>
+              <button onClick={() => setPreviewAttachment(null)} className="text-slate-400 hover:text-white text-xl transition">✕</button>
+            </div>
+          </div>
+          <iframe src={previewAttachment.file_url} className="flex-1 w-full" title={previewAttachment.file_name} />
+        </div>
+      )}
+
+      {/* Image Lightbox */}
       {lightbox && (
-        <div
-          className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4"
-          onClick={() => setLightbox(null)}
-        >
-          <img src={lightbox} alt="Photo" className="max-w-full max-h-full rounded-lg object-contain" />
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4" onClick={() => setLightbox(null)}>
+          <img src={lightbox} alt="Preview" className="max-w-full max-h-full rounded-lg object-contain" />
           <button className="absolute top-4 right-4 text-white text-2xl hover:text-slate-300 transition">✕</button>
         </div>
       )}
