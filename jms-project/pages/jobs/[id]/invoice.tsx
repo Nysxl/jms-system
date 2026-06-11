@@ -111,33 +111,37 @@ export default function InvoicePage() {
       a => a.file_type === 'application/pdf' && selectedAttachments.has(a.id)
     );
     if (pdfsToRender.length === 0) { setRenderedPdfs([]); return; }
-
+  
     setRenderingPdfs(true);
     const results: RenderedPdf[] = [];
-
+  
     try {
-      const pdfjsLib = await import('pdfjs-dist');
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.js`;
-
+      const pdfjsLib = await import('pdfjs-dist/legacy/build/pdf');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+  
       for (const att of pdfsToRender) {
         try {
           const response = await fetch(att.file_url);
           const arrayBuffer = await response.arrayBuffer();
-          const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          const loadingTask = pdfjsLib.getDocument({ data: new Uint8Array(arrayBuffer) });
+          const pdf = await loadingTask.promise;
           const pages: string[] = [];
-
+  
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
             const page = await pdf.getPage(pageNum);
             const viewport = page.getViewport({ scale: 1.5 });
             const canvas = document.createElement('canvas');
             canvas.width = viewport.width;
             canvas.height = viewport.height;
-            const ctx = canvas.getContext('2d')!;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) continue;
             await page.render({ canvasContext: ctx, viewport }).promise;
             pages.push(canvas.toDataURL('image/jpeg', 0.85));
           }
-
-          results.push({ attachmentId: att.id, fileName: att.file_name, pages });
+  
+          if (pages.length > 0) {
+            results.push({ attachmentId: att.id, fileName: att.file_name, pages });
+          }
         } catch (err) {
           console.error(`Failed to render ${att.file_name}:`, err);
         }
@@ -145,7 +149,7 @@ export default function InvoicePage() {
     } catch (err) {
       console.error('Failed to load pdfjs:', err);
     }
-
+  
     setRenderedPdfs(results);
     setRenderingPdfs(false);
   };
