@@ -27,6 +27,9 @@ export const Header: React.FC<{ username?: string }> = ({ username }) => {
           <Link href="/inventory" className="text-slate-300 hover:text-white transition">
             Inventory
           </Link>
+          <Link href="/settings" className="text-slate-300 hover:text-white transition">
+            Settings
+          </Link>
         </nav>
 
         <div className="flex items-center gap-4">
