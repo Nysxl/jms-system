@@ -37,7 +37,7 @@ interface JobAttachment {
 interface RenderedPdf {
   attachmentId: string;
   fileName: string;
-  pages: string[]; // base64 image data URLs
+  pages: string[];
 }
 
 const PAYMENT_TERMS = [
@@ -59,17 +59,14 @@ export default function InvoicePage() {
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Invoice options
   const [gstEnabled, setGstEnabled] = useState(false);
   const [paymentTermsDays, setPaymentTermsDays] = useState(14);
   const [customDays, setCustomDays] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
 
-  // Attachment selection
   const [selectedAttachments, setSelectedAttachments] = useState<Set<string>>(new Set());
   const [showAttachPicker, setShowAttachPicker] = useState(false);
 
-  // PDF rendering
   const [renderedPdfs, setRenderedPdfs] = useState<RenderedPdf[]>([]);
   const [renderingPdfs, setRenderingPdfs] = useState(false);
 
@@ -101,7 +98,6 @@ export default function InvoicePage() {
     if (lineRes.data) setLineItems(lineRes.data);
     if (attachRes.data) {
       setAttachments(attachRes.data);
-      // Default: select all attachments
       setSelectedAttachments(new Set(attachRes.data.map((a: JobAttachment) => a.id)));
     }
 
@@ -110,15 +106,11 @@ export default function InvoicePage() {
     setIsLoading(false);
   };
 
-  // Render selected PDFs using pdfjs-dist
   const renderPdfs = async () => {
     const pdfsToRender = attachments.filter(
       a => a.file_type === 'application/pdf' && selectedAttachments.has(a.id)
     );
-    if (pdfsToRender.length === 0) {
-      setRenderedPdfs([]);
-      return;
-    }
+    if (pdfsToRender.length === 0) { setRenderedPdfs([]); return; }
 
     setRenderingPdfs(true);
     const results: RenderedPdf[] = [];
@@ -169,10 +161,10 @@ export default function InvoicePage() {
   const dueDate = new Date();
   dueDate.setDate(dueDate.getDate() + effectiveDays);
 
-  const toggleAttachment = (id: string) => {
+  const toggleAttachment = (attachId: string) => {
     setSelectedAttachments(prev => {
       const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+      next.has(attachId) ? next.delete(attachId) : next.add(attachId);
       return next;
     });
   };
@@ -193,7 +185,7 @@ export default function InvoicePage() {
   return (
     <>
       {/* Toolbar */}
-      <div className="print:hidden bg-slate-900 px-6 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0 z-10">
+      <div className="print:hidden bg-slate-900 px-6 py-3 flex flex-wrap items-center justify-between gap-3 sticky top-0" style={{ zIndex: 50 }}>
         <button onClick={() => router.back()} className="text-slate-400 hover:text-white text-sm transition">← Back</button>
 
         <div className="flex flex-wrap items-center gap-4">
@@ -230,49 +222,74 @@ export default function InvoicePage() {
             )}
           </div>
 
-          {/* Attachment picker */}
+          {/* Attachment picker — z-index managed with inline styles to avoid Tailwind conflicts */}
           {attachments.length > 0 && (
-            <div className="relative">
+            <div className="relative" style={{ zIndex: 100 }}>
               <button
                 onClick={() => setShowAttachPicker(p => !p)}
                 className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-3 py-1.5 rounded-lg transition"
               >
                 📎 Attachments ({selectedAttachments.size}/{attachments.length})
               </button>
+
               {showAttachPicker && (
-                <div className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 z-30 w-72 shadow-xl">
-                  <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Include Attachments</p>
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {attachments.map(att => (
-                      <label key={att.id} className="flex items-center gap-2 cursor-pointer group">
-                        <input
-                          type="checkbox"
-                          checked={selectedAttachments.has(att.id)}
-                          onChange={() => toggleAttachment(att.id)}
-                          className="accent-blue-500"
-                        />
-                        <span className="text-slate-300 text-sm group-hover:text-white transition truncate">
-                          {att.file_type === 'application/pdf' ? '📄' : att.file_type.startsWith('image/') ? '🖼️' : '📎'} {att.file_name}
-                        </span>
-                      </label>
-                    ))}
+                <>
+                  {/* Backdrop — lower z than picker */}
+                  <div
+                    className="fixed inset-0"
+                    style={{ zIndex: 90 }}
+                    onClick={() => setShowAttachPicker(false)}
+                  />
+                  {/* Picker panel — higher z than backdrop */}
+                  <div
+                    className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 w-72 shadow-xl"
+                    style={{ zIndex: 110 }}
+                  >
+                    <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Include Attachments</p>
+                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                      {attachments.map(att => (
+                        <label
+                          key={att.id}
+                          className="flex items-center gap-2 cursor-pointer group"
+                          onClick={e => e.stopPropagation()}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedAttachments.has(att.id)}
+                            onChange={() => toggleAttachment(att.id)}
+                            className="accent-blue-500"
+                          />
+                          <span className="text-slate-300 text-sm group-hover:text-white transition truncate">
+                            {att.file_type === 'application/pdf' ? '📄' : att.file_type.startsWith('image/') ? '🖼️' : '📎'} {att.file_name}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                    <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
+                      <button
+                        onClick={e => { e.stopPropagation(); setSelectedAttachments(new Set(attachments.map(a => a.id))); }}
+                        className="flex-1 text-xs text-blue-400 hover:text-blue-300 transition"
+                      >
+                        Select all
+                      </button>
+                      <button
+                        onClick={e => { e.stopPropagation(); setSelectedAttachments(new Set()); }}
+                        className="flex-1 text-xs text-slate-500 hover:text-slate-300 transition"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                    {selectedPdfs.length > 0 && (
+                      <button
+                        onClick={e => { e.stopPropagation(); renderPdfs(); setShowAttachPicker(false); }}
+                        disabled={renderingPdfs}
+                        className="w-full mt-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs py-2 rounded-lg transition"
+                      >
+                        {renderingPdfs ? 'Rendering PDFs...' : '⚙️ Render PDFs inline'}
+                      </button>
+                    )}
                   </div>
-                  <div className="flex gap-2 mt-3 pt-3 border-t border-slate-700">
-                    <button onClick={() => setSelectedAttachments(new Set(attachments.map(a => a.id)))}
-                      className="flex-1 text-xs text-blue-400 hover:text-blue-300 transition">Select all</button>
-                    <button onClick={() => setSelectedAttachments(new Set())}
-                      className="flex-1 text-xs text-slate-500 hover:text-slate-300 transition">Clear all</button>
-                  </div>
-                  {selectedPdfs.length > 0 && (
-                    <button
-                      onClick={() => { renderPdfs(); setShowAttachPicker(false); }}
-                      disabled={renderingPdfs}
-                      className="w-full mt-2 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-xs py-2 rounded-lg transition"
-                    >
-                      {renderingPdfs ? 'Rendering PDFs...' : '⚙️ Render PDFs inline'}
-                    </button>
-                  )}
-                </div>
+                </>
               )}
             </div>
           )}
@@ -283,11 +300,6 @@ export default function InvoicePage() {
           </button>
         </div>
       </div>
-
-      {/* Close picker on outside click */}
-      {showAttachPicker && (
-        <div className="fixed inset-0 z-10 print:hidden" onClick={() => setShowAttachPicker(false)} />
-      )}
 
       {/* Invoice */}
       <div className="bg-white min-h-screen">
@@ -444,7 +456,7 @@ export default function InvoicePage() {
               {renderedPdfs.length === 0 && !renderingPdfs && (
                 <div className="print:hidden bg-yellow-500/10 border border-yellow-500/30 rounded-lg px-4 py-3 mb-4">
                   <p className="text-yellow-400 text-sm">
-                    Click <strong>⚙️ Render PDFs inline</strong> in the toolbar to embed PDF pages into this invoice before printing.
+                    Click <strong>📎 Attachments</strong> then <strong>⚙️ Render PDFs inline</strong> to embed PDF pages before printing.
                   </p>
                 </div>
               )}
@@ -459,11 +471,7 @@ export default function InvoicePage() {
                   <div className="space-y-2">
                     {pdf.pages.map((pageData, i) => (
                       <div key={i}>
-                        <img
-                          src={pageData}
-                          alt={`${pdf.fileName} page ${i + 1}`}
-                          className="w-full border border-slate-200 rounded"
-                        />
+                        <img src={pageData} alt={`${pdf.fileName} page ${i + 1}`} className="w-full border border-slate-200 rounded" />
                         {pdf.pages.length > 1 && (
                           <p className="text-slate-400 text-xs text-center mt-1">Page {i + 1} of {pdf.pages.length}</p>
                         )}
@@ -473,7 +481,6 @@ export default function InvoicePage() {
                 </div>
               ))}
 
-              {/* Fallback links for non-rendered PDFs */}
               {selectedPdfs
                 .filter(p => !renderedPdfs.find(r => r.attachmentId === p.id))
                 .map(att => (
@@ -488,7 +495,7 @@ export default function InvoicePage() {
             </div>
           )}
 
-          {/* Other file attachments */}
+          {/* Other attachments */}
           {selectedOther.length > 0 && (
             <div className="mb-8">
               <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">Other Attachments</h4>
