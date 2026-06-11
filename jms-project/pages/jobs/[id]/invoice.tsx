@@ -240,7 +240,7 @@ export default function InvoicePage() {
                 📎 Attachments ({selectedAttachments.size}/{attachments.length})
               </button>
               {showAttachPicker && (
-                <div className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 z-20 w-72 shadow-xl">
+                <div className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 z-30 w-72 shadow-xl">
                   <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">Include Attachments</p>
                   <div className="space-y-2 max-h-48 overflow-y-auto">
                     {attachments.map(att => (
