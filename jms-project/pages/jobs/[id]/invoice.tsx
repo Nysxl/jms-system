@@ -172,21 +172,34 @@ export default function InvoicePage() {
     setRenderingPdfs(false)
   }
 
-  const downloadDirectPdf = async () => {
-    try {
-      const html2pdf = (await import('html2pdf.js')).default
-      const element = document.getElementById('invoice-document')
-      const opt = {
-        margin: 15,
-        filename: `${invoiceNumber}.pdf`,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true },
-        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      }
-      html2pdf().set(opt).from(element).save()
-    } catch (err) {
-      console.error('failed to generate pdf', err)
+  const downloadDirectPdf = () => {
+    setIsDownloading(true)
+    const element = document.getElementById('invoice-document')
+    const opt = {
+      margin: 15,
+      filename: `${invoiceNumber}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2, useCORS: true },
+      jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
+  
+    // check if it is already loaded
+    if ((window as any).html2pdf) {
+      ;(window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false))
+      return
+    }
+  
+    // inject script from cdn
+    const script = document.createElement('script')
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
+    script.onload = () => {
+      ;(window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false))
+    }
+    script.onerror = () => {
+      alert('failed to load pdf generator try printing to pdf instead')
+      setIsDownloading(false)
+    }
+    document.body.appendChild(script)
   }
 
   const handleEmailInvoice = async () => {
