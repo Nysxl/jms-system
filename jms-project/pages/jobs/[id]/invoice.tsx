@@ -72,6 +72,7 @@ export default function InvoicePage() {
 
   const [renderedPdfs, setRenderedPdfs] = useState<RenderedPdf[]>([])
   const [renderingPdfs, setRenderingPdfs] = useState(false)
+  const [isDownloading, setIsDownloading] = useState(false)
   const [isEmailing, setIsEmailing] = useState(false) // state for email button
 
   useEffect(() => {
