@@ -350,7 +350,6 @@ export default function InvoicePage() {
               className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
             >
               {isEmailing ? 'sending...' : '📧 email'}
-            </button>
             <button 
               onClick={downloadDirectPdf} 
               disabled={isDownloading}
