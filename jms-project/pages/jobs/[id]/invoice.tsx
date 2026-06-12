@@ -14,8 +14,8 @@ interface CompanySettings {
   zip_code: string
   licence_number: string
   abn: string
-  bsb: string // added this
-  account_number: string // added this
+  bsb: string
+  account_number: string
   website: string
   logo_url: string
 }
@@ -59,8 +59,9 @@ export default function InvoicePage() {
   const [company, setCompany] = useState<CompanySettings | null>(null)
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [attachments, setAttachments] = useState<JobAttachment[]>([])
+  
   const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null) // added error state
+  const [error, setError] = useState<string | null>(null)
 
   const [gstEnabled, setGstEnabled] = useState(false)
   const [paymentTermsDays, setPaymentTermsDays] = useState(14)
@@ -72,8 +73,8 @@ export default function InvoicePage() {
 
   const [renderedPdfs, setRenderedPdfs] = useState<RenderedPdf[]>([])
   const [renderingPdfs, setRenderingPdfs] = useState(false)
+  const [isEmailing, setIsEmailing] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
-  const [isEmailing, setIsEmailing] = useState(false) // state for email button
 
   useEffect(() => {
     if (id) loadAll()
@@ -143,7 +144,7 @@ export default function InvoicePage() {
           const pages: string[] = []
   
           for (let pageNum = 1; pageNum <= pdf.numPages; pageNum++) {
-            await new Promise(r => setTimeout(r, 0)) // unblocks the ui between pages
+            await new Promise(r => setTimeout(r, 0))
             
             const page = await pdf.getPage(pageNum)
             const viewport = page.getViewport({ scale: 1.5 })
@@ -156,7 +157,7 @@ export default function InvoicePage() {
             pages.push(canvas.toDataURL('image/jpeg', 0.85))
           }
           
-          loadingTask.destroy() // fixes the memory leak
+          loadingTask.destroy()
   
           if (pages.length > 0) {
             results.push({ attachmentId: att.id, fileName: att.file_name, pages })
@@ -183,14 +184,12 @@ export default function InvoicePage() {
       html2canvas: { scale: 2, useCORS: true },
       jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
     }
-  
-    // check if it is already loaded
+
     if ((window as any).html2pdf) {
       ;(window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false))
       return
     }
-  
-    // inject script from cdn
+
     const script = document.createElement('script')
     script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js'
     script.onload = () => {
@@ -210,7 +209,6 @@ export default function InvoicePage() {
     }
     setIsEmailing(true)
     try {
-      // replace with ur actual edge function name
       const { error } = await supabase.functions.invoke('email-invoice', {
         body: { jobId: id, invoiceNumber, email: customer.email }
       })
@@ -231,7 +229,6 @@ export default function InvoicePage() {
   const gstAmount = gstEnabled ? subtotal * 0.1 : 0
   const total = subtotal + gstAmount
 
-  // fixed the nan bug here by defaulting to 0 if they wipe the input
   const effectiveDays = paymentTermsDays === -1 ? (parseInt(customDays) || 0) : paymentTermsDays
   const dueDate = new Date()
   dueDate.setDate(dueDate.getDate() + effectiveDays)
@@ -258,7 +255,7 @@ export default function InvoicePage() {
   )
 
   if (!job) return (
-    <div className="min-h-screen bg-white flex items-center justify-center text-slate-400">job not found.</div>
+    <div className="min-h-screen bg-white flex items-center justify-center text-slate-400">job not found</div>
   )
 
   return (
@@ -312,7 +309,7 @@ export default function InvoicePage() {
                   <div className="fixed inset-0" style={{ zIndex: 90 }} onClick={() => setShowAttachPicker(false)} />
                   <div className="absolute top-10 right-0 bg-slate-800 border border-slate-700 rounded-xl p-4 w-72 shadow-xl" style={{ zIndex: 110 }}>
                     <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide mb-3">include attachments</p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto">
+                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
                       {attachments.map(att => (
                         <label key={att.id} className="flex items-center gap-2 cursor-pointer group" onClick={e => e.stopPropagation()}>
                           <input
@@ -346,7 +343,7 @@ export default function InvoicePage() {
             </div>
           )}
 
-          <div className="flex gap-2 border-l border-slate-700 pl-4 ml-2">
+          <div className="flex gap-2 border-l border-slate-700 pl-4">
             <button 
               onClick={handleEmailInvoice}
               disabled={isEmailing || !customer?.email}
@@ -354,8 +351,12 @@ export default function InvoicePage() {
             >
               {isEmailing ? 'sending...' : '📧 email'}
             </button>
-            <button onClick={downloadDirectPdf} className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition">
-              ⬇️ download pdf
+            <button 
+              onClick={downloadDirectPdf} 
+              disabled={isDownloading}
+              className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              {isDownloading ? 'generating...' : '⬇️ download pdf'}
             </button>
             <button onClick={() => window.print()} className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-semibold px-6 py-2 rounded-lg transition">
               🖨️ print
@@ -481,8 +482,7 @@ export default function InvoicePage() {
             </div>
           </div>
 
-          {/* bank details added here */}
-          <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-8">
+          <div className="bg-slate-50 border border-slate-200 rounded-lg p-5 mb-8 print:break-inside-avoid">
             <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-2">payment details</h4>
             <p className="text-slate-600 text-sm mb-3">
               payment is due within <strong>{effectiveDays} days</strong> of invoice date ({formatDate(dueDate.toISOString())})
@@ -504,11 +504,11 @@ export default function InvoicePage() {
           </div>
 
           {selectedImages.length > 0 && (
-            <div className="mb-8">
+            <div className="mb-8 mt-6">
               <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wide mb-3">supporting images</h4>
               <div className="grid grid-cols-2 gap-4">
                 {selectedImages.map(att => (
-                  <div key={att.id}>
+                  <div key={att.id} className="print:break-inside-avoid">
                     <img src={att.file_url} alt={att.file_name} className="w-full rounded-lg border border-slate-200 object-contain" />
                     <p className="text-slate-500 text-xs mt-1 text-center">{att.file_name}</p>
                   </div>
@@ -538,7 +538,7 @@ export default function InvoicePage() {
                   <p className="text-slate-600 text-sm font-medium mb-2 print:text-slate-800">📄 {pdf.fileName}</p>
                   <div className="space-y-2">
                     {pdf.pages.map((pageData, i) => (
-                      <div key={i}>
+                      <div key={i} className="print:break-inside-avoid">
                         <img src={pageData} alt={`${pdf.fileName} page ${i + 1}`} className="w-full border border-slate-200 rounded" />
                         {pdf.pages.length > 1 && (
                           <p className="text-slate-400 text-xs text-center mt-1">page {i + 1} of {pdf.pages.length}</p>
@@ -580,7 +580,7 @@ export default function InvoicePage() {
             </div>
           )}
 
-          <div className="border-t-2 border-slate-200 pt-6 text-center">
+          <div className="border-t-2 border-slate-200 pt-6 text-center print:break-inside-avoid">
             <p className="text-slate-400 text-xs">
               {company?.company_name}
               {company?.abn ? ` · abn: ${company.abn}` : ''}
