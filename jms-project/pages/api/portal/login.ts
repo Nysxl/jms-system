@@ -23,24 +23,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cleanEmail = email.trim().toLowerCase();
     console.log('Clean email:', cleanEmail);
 
-    console.log('Creating Supabase client...');
+    console.log('Creating Supabase clients...');
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
     console.log('Env var values:', {
       url: url ? url.substring(0, 20) + '...' : 'MISSING',
       anonKey: anonKey ? anonKey.substring(0, 20) + '...' : 'MISSING',
+      serviceKey: serviceKey ? serviceKey.substring(0, 20) + '...' : 'MISSING',
     });
 
-    if (!url || !anonKey) {
+    if (!url || !anonKey || !serviceKey) {
       console.error('CRITICAL: Missing environment variables');
       return res.status(500).json({
         error: 'Server configuration error',
-        available: { url: !!url, anonKey: !!anonKey }
+        available: { url: !!url, anonKey: !!anonKey, serviceKey: !!serviceKey }
       });
     }
 
     const supabaseAnon = createClient(url, anonKey);
+    const supabaseAdmin = createClient(url, serviceKey);
 
     // Authenticate via Supabase Auth
     console.log('Attempting Supabase Auth signInWithPassword...');
