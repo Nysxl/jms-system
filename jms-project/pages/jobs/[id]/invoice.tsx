@@ -256,7 +256,7 @@ export default function InvoicePage() {
         .insert({
           user_id: user!.id,
           job_id: id,
-          customer_id: job.customer_id,
+          customer_id: job.billing_customer_id || job.customer_id,
           invoice_number: invoiceNumber,
           status: 'draft',
           subtotal,
