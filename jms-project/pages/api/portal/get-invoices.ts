@@ -40,5 +40,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Invoices lookup error:', invError);
   }
 
-  return res.status(200).json({ invoices: invoices || [], debug: { customerIds, subCount: subs?.length } });
+  console.log('Portal invoices query:', {
+    portalUserId,
+    portalUserCustomerId: portalUser.customer_id,
+    subContactCount: subs?.length,
+    allCustomerIds: customerIds,
+    foundInvoiceCount: invoices?.length || 0
+  });
+
+  return res.status(200).json({
+    invoices: invoices || [],
+    debug: {
+      portalUserCustomerId: portalUser.customer_id,
+      customerIds,
+      subCount: subs?.length,
+      foundCount: invoices?.length || 0
+    }
+  });
 }
