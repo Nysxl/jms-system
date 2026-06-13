@@ -207,7 +207,14 @@ export default function PortalJobDetail() {
     if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
   };
 
-  if (!portalUser || isLoading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
+  if (!portalUser) {
+    if (isLoading) {
+      return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
+    }
+    return null; // Will redirect in useEffect
+  }
+
+  if (isLoading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
   if (!job) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Job not found</p></div>;
 
   const customerNotes = notes.filter(n => n.author_type === 'portal_user');

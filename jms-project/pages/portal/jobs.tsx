@@ -109,7 +109,12 @@ export default function PortalJobs() {
     return map[status] || 'bg-slate-600 text-slate-300';
   };
 
-  if (!portalUser) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
+  if (!portalUser) {
+    if (isLoading) {
+      return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
+    }
+    return null; // Will redirect in useEffect
+  }
 
   return (
     <div className="min-h-screen bg-slate-950">
