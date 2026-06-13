@@ -37,6 +37,8 @@ export default function EditInvoice() {
   const [items, setItems] = useState<InvoiceItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [editForm, setEditForm] = useState({ status: '', due_date: '', notes: '' });
 
   useEffect(() => {
@@ -143,6 +145,22 @@ export default function EditInvoice() {
       alert('Failed to save invoice');
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!invoice) return;
+    setIsDeleting(true);
+    try {
+      await supabase.from('invoice_items').delete().eq('invoice_id', invoice.id);
+      await supabase.from('invoices').delete().eq('id', invoice.id);
+      alert('Invoice deleted successfully');
+      router.push(`/jobs/${invoice.job_id}`);
+    } catch (err) {
+      alert('Failed to delete invoice');
+    } finally {
+      setIsDeleting(false);
+      setDeleteConfirm(false);
     }
   };
 
@@ -258,12 +276,35 @@ export default function EditInvoice() {
             </div>
           </div>
 
-          <button onClick={saveChanges} disabled={isSaving}
-            className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </button>
+          <div className="flex gap-3">
+            <button onClick={saveChanges} disabled={isSaving}
+              className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
+              {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button onClick={() => setDeleteConfirm(true)}
+              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold px-6 py-3 rounded-lg transition">
+              🗑️ Delete Invoice
+            </button>
+          </div>
         </div>
       </main>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-sm text-center">
+            <p className="text-4xl mb-4">⚠️</p>
+            <h3 className="text-white font-semibold text-lg mb-2">Delete Invoice?</h3>
+            <p className="text-slate-400 text-sm mb-6">This action cannot be undone. The invoice and all its line items will be permanently deleted.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+              <button onClick={handleDelete} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
