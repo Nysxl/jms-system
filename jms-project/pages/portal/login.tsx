@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import axios from 'axios';
+import { supabase } from '@/lib/supabase';
 
 export default function PortalLogin() {
   const router = useRouter();
@@ -22,6 +23,12 @@ export default function PortalLogin() {
     try {
       const { data } = await axios.post('/api/portal/login', { email: email.trim().toLowerCase(), password });
       localStorage.setItem('portal_session', JSON.stringify(data.portal_user));
+
+      // Set the session in Supabase client
+      if (data.session) {
+        await supabase.auth.setSession(data.session);
+      }
+
       router.push('/portal/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.error || 'Login failed. Please try again.');
