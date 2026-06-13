@@ -56,28 +56,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       details: JSON.stringify({ title, scheduledDate }),
     });
 
-    // Send email to admin
-    try {
-      // Try to send via Resend if configured
-      if (process.env.RESEND_API_KEY) {
-        const { Resend } = await import('resend');
-        const resend = new Resend(process.env.RESEND_API_KEY);
-
-        const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
-        await resend.emails.send({
-          from: 'jobs@jms.local',
-          to: adminEmail,
-          subject: `New Job Request: ${title}`,
-          html: `<h2>New Job Created</h2>
-            <p><strong>Customer:</strong> ${portalUser.customer?.name}</p>
-            <p><strong>Title:</strong> ${title}</p>
-            ${description ? `<p><strong>Description:</strong> ${description}</p>` : ''}
-            ${scheduledDate ? `<p><strong>Scheduled Date:</strong> ${new Date(scheduledDate).toLocaleDateString()}</p>` : ''}
-            <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/jobs/${job.id}">View Job</a></p>`,
-        });
+    // Send email to admin (optional - gracefully handles missing Resend)
+    if (process.env.RESEND_API_KEY) {
+      try {
+        // @ts-ignore - dynamic import of optional dependency
+        const { Resend } = await import('resend').catch(() => null);
+        if (Resend) {
+          const resend = new Resend(process.env.RESEND_API_KEY);
+          const adminEmail = process.env.ADMIN_EMAIL || 'admin@example.com';
+          await resend.emails.send({
+            from: 'jobs@jms.local',
+            to: adminEmail,
+            subject: `New Job Request: ${title}`,
+            html: `<h2>New Job Created</h2>
+              <p><strong>Customer:</strong> ${portalUser.customer?.name}</p>
+              <p><strong>Title:</strong> ${title}</p>
+              ${description ? `<p><strong>Description:</strong> ${description}</p>` : ''}
+              ${scheduledDate ? `<p><strong>Scheduled Date:</strong> ${new Date(scheduledDate).toLocaleDateString()}</p>` : ''}
+              <p><a href="${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/jobs/${job.id}">View Job</a></p>`,
+          });
+        }
+      } catch (err) {
+        console.log(`[EMAIL PENDING] Job created by ${portalUser.customer?.name}: ${title}`);
       }
-    } catch (err) {
-      console.log(`[EMAIL PENDING] Job created by ${portalUser.customer?.name}: ${title} (configure RESEND_API_KEY to send emails)`);
     }
 
     return res.status(201).json({ success: true, job });

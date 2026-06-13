@@ -15,14 +15,15 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
   }
 
   try {
-    // Dynamically import Resend
-    let Resend;
-    try {
-      const module = await import('resend');
-      Resend = module.Resend;
-    } catch {
-      return res.status(501).json({ error: 'Email service not configured. Install resend: npm install resend' });
+    if (!process.env.RESEND_API_KEY) {
+      return res.status(501).json({ error: 'Email service not configured. Set RESEND_API_KEY environment variable and install resend: npm install resend' });
     }
+
+    // Dynamically import Resend - use @ts-ignore to suppress type errors when package not installed
+    // @ts-ignore
+    const { Resend } = await import('resend').catch(() => {
+      throw new Error('Resend package not installed. Run: npm install resend');
+    });
 
     const resend = new Resend(process.env.RESEND_API_KEY);
 
