@@ -25,21 +25,25 @@ export default function PortalJobs() {
   const checkSession = async () => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log('Session:', session?.user?.id);
       if (!session) {
         router.push('/portal/login');
         return;
       }
 
       // Get portal user
-      const { data: pu } = await supabase
+      const { data: pu, error: puError } = await supabase
         .from('portal_users')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
+      console.log('Portal user:', pu, 'Error:', puError);
       if (pu) {
         setPortalUser(pu);
         loadJobs(pu.customer_id);
+      } else {
+        console.error('Portal user not found for session:', session.user.id);
       }
     } catch (err) {
       console.error('Session check failed:', err);
@@ -48,12 +52,17 @@ export default function PortalJobs() {
 
   const loadJobs = async (customerId: string) => {
     setIsLoading(true);
-    const { data } = await supabase
+    console.log('Loading jobs for customer:', customerId);
+    const { data, error } = await supabase
       .from('jobs')
       .select('*')
       .eq('customer_id', customerId)
       .order('scheduled_date', { ascending: true });
-    if (data) setJobs(data);
+    console.log('Jobs query result:', { data, error });
+    if (data) {
+      setJobs(data);
+      console.log('Jobs loaded:', data.length);
+    }
     setIsLoading(false);
   };
 
