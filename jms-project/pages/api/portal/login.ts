@@ -20,7 +20,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('is_active', 1)
     .single();
 
-  if (error || !portalUser) {
+  if (error) {
+    console.error('Portal login DB error:', error);
+    return res.status(401).json({ error: `Database error: ${error.message}` });
+  }
+
+  if (!portalUser) {
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
