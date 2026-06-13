@@ -167,8 +167,10 @@ export default function JobDetail() {
       const { data: cust } = await supabase.from('customers').select('*').eq('id', data.customer_id).single();
       if (cust) {
         setCustomer(cust);
-        if (cust.customer_type === 'sub_contact' && cust.contractor_id) {
-          const { data: cont } = await supabase.from('customers').select('*').eq('id', cust.contractor_id).single();
+        // Use explicit billing_customer_id if set, otherwise fall back to contractor_id for sub_contacts
+        const billingId = data.billing_customer_id || (cust.customer_type === 'sub_contact' ? cust.contractor_id : null);
+        if (billingId && billingId !== data.customer_id) {
+          const { data: cont } = await supabase.from('customers').select('*').eq('id', billingId).single();
           if (cont) setContractor(cont);
         }
       }
