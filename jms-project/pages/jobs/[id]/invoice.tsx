@@ -59,7 +59,9 @@ export default function InvoicePage() {
   const [company, setCompany] = useState<CompanySettings | null>(null)
   const [lineItems, setLineItems] = useState<LineItem[]>([])
   const [attachments, setAttachments] = useState<JobAttachment[]>([])
-  
+  const [serviceReports, setServiceReports] = useState<any[]>([])
+  const [selectedServiceReportId, setSelectedServiceReportId] = useState<string | null>(null)
+
   const [isLoading, setIsLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -93,11 +95,12 @@ export default function InvoicePage() {
     try {
       const { data: { user } } = await supabase.auth.getUser()
 
-      const [jobRes, companyRes, lineRes, attachRes] = await Promise.all([
+      const [jobRes, companyRes, lineRes, attachRes, reportsRes] = await Promise.all([
         supabase.from('jobs').select('*').eq('id', id).single(),
         supabase.from('company_settings').select('*').eq('user_id', user?.id).single(),
         supabase.from('job_line_items').select('*').eq('job_id', id).order('created_at', { ascending: true }),
         supabase.from('job_attachments').select('*').eq('job_id', id).order('uploaded_at', { ascending: true }),
+        supabase.from('service_reports').select('*').eq('job_id', id).order('created_at', { ascending: false }),
       ])
 
       if (jobRes.error) throw jobRes.error
@@ -113,6 +116,7 @@ export default function InvoicePage() {
         setAttachments(attachRes.data)
         setSelectedAttachments(new Set(attachRes.data.map((a: JobAttachment) => a.id)))
       }
+      if (reportsRes.data) setServiceReports(reportsRes.data)
 
       const now = new Date()
       setInvoiceNumber(`INV-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}-${id.slice(-6).toUpperCase()}`)
@@ -252,6 +256,7 @@ export default function InvoicePage() {
           payment_terms: `${effectiveDays} days`,
           due_date: dueDate.toISOString(),
           notes: null,
+          service_report_id: selectedServiceReportId || null,
         })
         .select()
         .single()
@@ -267,6 +272,12 @@ export default function InvoicePage() {
             amount: li.amount,
           }))
         )
+        // Update quantity_invoiced for each line item
+        for (const li of lineItems) {
+          await supabase.from('job_line_items').update({
+            quantity_invoiced: li.quantity_invoiced ? li.quantity_invoiced + li.quantity : li.quantity,
+          }).eq('id', li.id)
+        }
       }
 
       setSavedInvoiceId(inv.id)
