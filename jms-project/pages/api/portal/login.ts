@@ -9,59 +9,62 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  console.log('Env check:', { url: !!url, anonKey: !!anonKey, serviceKey: !!serviceKey });
-
-  if (!url || !anonKey || !serviceKey) {
-    return res.status(500).json({
-      error: 'Server configuration error.',
-      missing: { url: !url, anonKey: !anonKey, serviceKey: !serviceKey }
-    });
+  if (!url || !anonKey) {
+    return res.status(500).json({ error: 'Server configuration error.' });
   }
 
   try {
-    const supabaseAnon = createClient(url, anonKey);
-    const supabaseAdmin = createClient(url, serviceKey);
+    const supabase = createClient(url, anonKey);
     const cleanEmail = email.trim().toLowerCase();
 
-    // Authenticate via Supabase Auth
-    const { data: authData, error: authError } = await supabaseAnon.auth.signInWithPassword({
+    // Authenticate - works with anon key only
+    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
 
     if (authError || !authData.user) {
-      console.error('Auth failed:', authError?.message);
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
 
-    // Get portal user details
-    const { data: portalUser, error: portalError } = await supabaseAdmin
+    // Set the session so we can query as this user (RLS: auth.uid() = user_id)
+    await supabase.auth.setSession(authData.session);
+
+    // Query portal_users - RLS allows user to read their own record via user_id = auth.uid()
+    const { data: portalUser, error: portalError } = await supabase
       .from('portal_users')
       .select('*, customer:customers(*)')
-      .eq('email', cleanEmail)
+      .eq('user_id', authData.user.id)
       .eq('is_active', 1)
       .maybeSingle();
 
-    if (portalError || !portalUser) {
-      console.error('Portal user not found:', portalError?.message);
-      return res.status(401).json({ error: 'Portal user not found or inactive.' });
-    }
+    console.log('portal user lookup:', { found: !!portalUser, error: portalError?.message, authUid: authData.user.id });
 
-    // Update last_login and log activity (best effort)
-    try {
-      await supabaseAdmin.from('portal_users')
-        .update({ last_login: new Date().toISOString() })
-        .eq('id', portalUser.id);
-      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '';
-      await supabaseAdmin.from('portal_activity_log').insert([{
-        portal_user_id: portalUser.id,
-        action_type: 'login',
-        ip_address: ip,
-        created_at: new Date().toISOString(),
-      }]);
-    } catch (_e) {}
+    if (portalError || !portalUser) {
+      // Fallback: try matching by email in case user_id isn't set
+      const { data: portalUserByEmail } = await supabase
+        .from('portal_users')
+        .select('*, customer:customers(*)')
+        .eq('email', cleanEmail)
+        .eq('is_active', 1)
+        .maybeSingle();
+
+      if (!portalUserByEmail) {
+        return res.status(401).json({ error: 'Portal access not configured for this account.' });
+      }
+
+      return res.status(200).json({
+        success: true,
+        session: authData.session,
+        portal_user: {
+          id: portalUserByEmail.id,
+          email: portalUserByEmail.email,
+          customer_id: portalUserByEmail.customer_id,
+          customer: portalUserByEmail.customer,
+        },
+      });
+    }
 
     return res.status(200).json({
       success: true,
