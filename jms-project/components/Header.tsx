@@ -4,7 +4,7 @@ import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
 
 export const Header: React.FC<{ username?: string }> = ({ username }) => {
-  const [menuOpen, setMenuOpen] = useState(false);
+  const [_menuOpen, _setMenuOpen] = useState(false);
   const router = useRouter();
 
   const handleSignOut = async () => {
