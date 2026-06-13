@@ -4,35 +4,40 @@ import { createClient } from '@supabase/supabase-js';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { userId, password, authToken } = req.body;
-  if (!userId || !password) return res.status(400).json({ error: 'userId and password required' });
-
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !anonKey) return res.status(500).json({ error: 'Server configuration error.' });
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !serviceKey) return res.status(500).json({ error: 'Server configuration error.' });
+
+  const supabaseAdmin = createClient(url, serviceKey);
+  const { email, password } = req.body;
+  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   try {
-    const supabase = createClient(url, anonKey);
+    const cleanEmail = email.trim().toLowerCase();
 
-    // Set the caller's auth session so RLS and function grants apply
-    if (authToken) {
-      await supabase.auth.setSession({ access_token: authToken, refresh_token: '' });
-    }
-
-    // Call SECURITY DEFINER function to hash and store password
-    const { data, error } = await supabase.rpc('set_portal_password', {
-      p_user_id: userId,
-      p_password: password,
+    // Try to create new auth user
+    const { error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email: cleanEmail,
+      password,
+      email_confirm: true,
     });
 
-    if (error) {
-      console.error('set_portal_password error:', error);
-      return res.status(500).json({ error: error.message });
+    if (createError) {
+      if (createError.message?.includes('already been registered') || createError.message?.includes('already exists')) {
+        // User exists - update their password instead
+        const { data: users } = await supabaseAdmin.auth.admin.listUsers();
+        const existing = users?.users?.find((u: any) => u.email === cleanEmail);
+        if (existing) {
+          await supabaseAdmin.auth.admin.updateUserById(existing.id, { password });
+        }
+      } else {
+        throw createError;
+      }
     }
 
-    return res.status(200).json({ success: true, updated: data });
+    return res.status(200).json({ success: true });
   } catch (err: any) {
-    console.error('Error setting portal password:', err);
-    return res.status(500).json({ error: err.message || 'Failed to set password' });
+    console.error('Auth user error:', err);
+    return res.status(500).json({ error: err.message || 'Failed to create auth user' });
   }
 }

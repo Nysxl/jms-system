@@ -49,6 +49,11 @@ export default function PortalLogin() {
       console.log('Success response:', { success: data.success, portalUser: data.portal_user, hasSession: !!data.session });
 
       localStorage.setItem('portal_session', JSON.stringify(data.portal_user));
+
+      if (data.session) {
+        await supabase.auth.setSession(data.session);
+      }
+
       console.log('Stored portal session, redirecting to /portal/jobs');
       router.push('/portal/jobs');
     } catch (err: any) {

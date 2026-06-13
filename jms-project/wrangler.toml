@@ -1,11 +1,13 @@
 name = "jms-system"
-type = "service"
 main = ".open-next/worker.mjs"
 compatibility_date = "2024-12-04"
+compatibility_flags = ["nodejs_compat"]
+
+[vars]
+NEXT_PUBLIC_SUPABASE_URL = ""
+NEXT_PUBLIC_SUPABASE_ANON_KEY = ""
+# SUPABASE_SERVICE_ROLE_KEY is a secret - set via: wrangler secret put SUPABASE_SERVICE_ROLE_KEY
 
 [build]
 command = "npm run build"
 cwd = "."
-
-[env.production]
-name = "jms-system-production"

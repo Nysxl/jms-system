@@ -104,41 +104,23 @@ export default function PortalManagement() {
     if (!editForm.email.trim() || !editForm.password.trim()) { setEditError('Email and password are required.'); return; }
     setIsSavingEdit(true);
     try {
-      // Get current session token to pass to API
-      const { data: sessionData } = await supabase.auth.getSession();
-      const authToken = sessionData.session?.access_token;
-
-      // First save portal user record (get the ID if new)
-      const { data: savedUser, error } = await supabase.from('portal_users').upsert({
-        id: selectedUser?.id,
-        email: editForm.email.trim().toLowerCase(),
-        customer_id: editForm.customer_id,
-        is_active: 1,
-        updated_at: new Date().toISOString(),
-      }).select().single();
-
-      if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
-
-      // Set hashed password via RPC-backed API
+      // Create or update Supabase Auth user
       await fetch('/api/portal/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: savedUser.id,
+          email: editForm.email.trim().toLowerCase(),
           password: editForm.password,
-          authToken,
         }),
       });
 
-      // Update portal user email/metadata
-      const { error: updateError } = await supabase.from('portal_users').update({
+      // Update portal user record
+      const { error } = await supabase.from('portal_users').update({
         email: editForm.email.trim().toLowerCase(),
         updated_at: new Date().toISOString(),
-      }).eq('id', savedUser.id);
+      }).eq('id', selectedUser!.id);
 
-      const error2 = updateError;
-
-      if (error2) { setEditError(error2.message); setIsSavingEdit(false); return; }
+      if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
       setEditSuccess(true);
       setIsSavingEdit(false);
       loadData(userId);
@@ -165,16 +147,12 @@ export default function PortalManagement() {
     }
     setResettingPassword(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const authToken = sessionData.session?.access_token;
-
       const res = await fetch('/api/portal/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          userId: resetUser!.id,
+          email: resetUser!.email,
           password: resetPassword,
-          authToken,
         }),
       });
       const data = await res.json();
