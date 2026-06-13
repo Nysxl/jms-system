@@ -32,11 +32,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const customerIds = [customerId, ...(subContacts?.map((s: any) => s.id) || [])];
 
   // Get jobs for this customer + sub-contacts
-  const { data: jobs } = await supabase
+  const { data: jobs, error: jobsError } = await supabase
     .from('jobs')
     .select('*')
     .in('customer_id', customerIds)
     .order('created_at', { ascending: false });
 
-  return res.status(200).json({ subContacts: subContacts || [], jobs: jobs || [] });
+  return res.status(200).json({
+    subContacts: subContacts || [],
+    jobs: jobs || [],
+    _debug: { customerId, customerIds, jobsError: jobsError?.message },
+  });
 }

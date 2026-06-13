@@ -60,10 +60,13 @@ export default function PortalJobs() {
       if (!pu) return;
 
       const res = await fetch(`/api/portal/get-data?portalUserId=${pu.id}`);
+      const data = await res.json();
       if (res.ok) {
-        const data = await res.json();
         setSubContacts(data.subContacts || []);
         setJobs(data.jobs || []);
+      } else {
+        console.error('[get-data error]', data);
+        alert('Failed to load jobs: ' + JSON.stringify(data));
       }
     } finally {
       setIsLoading(false);
