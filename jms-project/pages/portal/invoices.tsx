@@ -27,7 +27,7 @@ export default function PortalInvoices() {
     try {
       const { data } = await supabase
         .from('invoices')
-        .select('*, job:jobs(title)')
+        .select('*')
         .eq('customer_id', portalUser.customer_id)
         .order('created_at', { ascending: false });
 
