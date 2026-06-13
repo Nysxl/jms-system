@@ -40,16 +40,16 @@ export default function NewJob() {
 
   // Only show relevant billing options based on selected customer
   const billingOptions = (() => {
-    if (!selectedCustomer) return customers.filter(c => c.customer_type !== 'sub_contact');
+    if (!selectedCustomer) return [];
     if (isSubContact) {
-      // For sub-contacts: only show the contractor and direct clients
+      // Sub-contact: show the sub-contact themselves + their contractor
       return customers.filter(c =>
-        c.id === selectedCustomer.contractor_id ||
-        c.customer_type === 'direct'
+        c.id === selectedCustomer.id ||
+        c.id === selectedCustomer.contractor_id
       );
     }
-    // For direct contacts: show the selected client + other direct clients
-    return customers.filter(c => c.customer_type !== 'sub_contact');
+    // Direct client: only show that client
+    return [selectedCustomer];
   })().filter(c =>
     billingSearch === '' ||
     c.name.toLowerCase().includes(billingSearch.toLowerCase()) ||
