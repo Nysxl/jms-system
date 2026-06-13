@@ -14,6 +14,9 @@ interface JobAttachment {
   file_type: string;
   file_size: number;
   uploaded_at: string;
+  uploader_email?: string;
+  author_type?: string;
+  is_internal?: boolean;
 }
 
 interface LineItem {
