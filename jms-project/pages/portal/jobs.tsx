@@ -49,17 +49,24 @@ export default function PortalJobs() {
 
   const loadJobs = async (customerId: string) => {
     setIsLoading(true);
-    console.log('Loading jobs for customer:', customerId);
+
+    // Get sub-contact customer IDs under this customer
+    const { data: subContacts } = await supabase
+      .from('customers')
+      .select('id')
+      .eq('contractor_id', customerId)
+      .eq('customer_type', 'sub_contact');
+
+    const customerIds = [customerId, ...(subContacts?.map(s => s.id) || [])];
+
     const { data, error } = await supabase
       .from('jobs')
-      .select('*')
-      .eq('customer_id', customerId)
+      .select('*, customer:customers(name)')
+      .in('customer_id', customerIds)
       .order('scheduled_date', { ascending: true });
-    console.log('Jobs query result:', { data, error });
-    if (data) {
-      setJobs(data);
-      console.log('Jobs loaded:', data.length);
-    }
+
+    if (error) console.error('Jobs query error:', error);
+    if (data) setJobs(data);
     setIsLoading(false);
   };
 
