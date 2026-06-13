@@ -362,6 +362,19 @@ export default function InvoicePage() {
             )}
           </div>
 
+          {serviceReports.length > 0 && (
+            <div>
+              <label className="block text-slate-400 text-sm mb-2">Attach Service Report (JSR)</label>
+              <select value={selectedServiceReportId || ''} onChange={e => setSelectedServiceReportId(e.target.value || null)}
+                className="bg-slate-800 border border-slate-600 text-white text-sm rounded-lg px-3 py-1.5 w-full focus:outline-none focus:border-blue-500">
+                <option value="">— None —</option>
+                {serviceReports.map(sr => (
+                  <option key={sr.id} value={sr.id}>{sr.title || `JSR ${new Date(sr.created_at).toLocaleDateString()}`}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {attachments.length > 0 && (
             <div className="relative" style={{ zIndex: 100 }}>
               <button
@@ -519,21 +532,29 @@ export default function InvoicePage() {
               <tr>
                 <th className="text-left px-4 py-3 text-slate-600 font-semibold">description</th>
                 <th className="text-right px-4 py-3 text-slate-600 font-semibold w-16">qty</th>
+                <th className="text-right px-4 py-3 text-slate-600 font-semibold w-16">invoiced</th>
+                <th className="text-right px-4 py-3 text-slate-600 font-semibold w-16">remaining</th>
                 <th className="text-right px-4 py-3 text-slate-600 font-semibold w-24">unit price</th>
                 <th className="text-right px-4 py-3 text-slate-600 font-semibold w-24">amount</th>
               </tr>
             </thead>
             <tbody>
               {lineItems.length === 0 ? (
-                <tr><td colSpan={4} className="px-4 py-6 text-center text-slate-400 text-sm">no line items</td></tr>
-              ) : lineItems.map((item, idx) => (
-                <tr key={item.id} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
-                  <td className="px-4 py-3 text-slate-800">{item.description}</td>
-                  <td className="px-4 py-3 text-right text-slate-700">{item.quantity}</td>
-                  <td className="px-4 py-3 text-right text-slate-700">${item.unit_price.toFixed(2)}</td>
-                  <td className="px-4 py-3 text-right font-medium text-slate-900">${item.amount.toFixed(2)}</td>
-                </tr>
-              ))}
+                <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400 text-sm">no line items</td></tr>
+              ) : lineItems.map((item: any, idx) => {
+                const invoiced = item.quantity_invoiced || 0;
+                const remaining = Math.max(0, item.quantity - invoiced);
+                return (
+                  <tr key={item.id} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}`}>
+                    <td className="px-4 py-3 text-slate-800">{item.description}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">{item.quantity}</td>
+                    <td className="px-4 py-3 text-right text-slate-600">{invoiced}</td>
+                    <td className={`px-4 py-3 text-right font-medium ${remaining > 0 ? 'text-slate-900' : 'text-slate-400'}`}>{remaining}</td>
+                    <td className="px-4 py-3 text-right text-slate-700">${item.unit_price.toFixed(2)}</td>
+                    <td className="px-4 py-3 text-right font-medium text-slate-900">${item.amount.toFixed(2)}</td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
 
