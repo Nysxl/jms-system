@@ -55,6 +55,7 @@ export default function EditInvoice() {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [editForm, setEditForm] = useState({ status: '', due_date: '', notes: '' });
 
   useEffect(() => {
@@ -194,6 +195,29 @@ export default function EditInvoice() {
     }
   };
 
+  const downloadPdf = async () => {
+    const element = document.getElementById('invoice-document');
+    if (!element) return;
+    setIsDownloading(true);
+    const opt = {
+      margin: 10,
+      filename: `${invoice?.invoice_number}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+    };
+    if ((window as any).html2pdf) {
+      ;(window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+    } else {
+      const script = document.createElement('script');
+      script.onload = () => {
+        ;(window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+      };
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      document.head.appendChild(script);
+    }
+  };
+
   if (isLoading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
   if (!invoice) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Invoice not found</p></div>;
 
@@ -323,8 +347,19 @@ export default function EditInvoice() {
 
           {/* Print Preview */}
           {job && customer && company && (
-            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
-              <div className="p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg flex flex-col">
+              <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
+                <button onClick={() => window.print()}
+                  className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition">
+                  🖨️ Print
+                </button>
+                <button onClick={downloadPdf} disabled={isDownloading}
+                  className="text-sm bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-3 py-1.5 rounded transition">
+                  {isDownloading ? '📥 Downloading...' : '📥 Download PDF'}
+                </button>
+              </div>
+              <div className="p-8 space-y-6 max-h-[calc(90vh-60px)] overflow-y-auto">
+                <div id="invoice-document" className="bg-white">
                 <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
                   <div className="flex items-center gap-4">
                     {company.logo_url ? (
@@ -403,6 +438,17 @@ export default function EditInvoice() {
                       <span>${total.toFixed(2)}</span>
                     </div>
                   </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
+                  <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
+                  <p className="text-slate-600 mb-2">Payment is due within 30 days</p>
+                  <div className="bg-white border border-slate-200 rounded p-2 text-slate-700">
+                    <p className="font-semibold mb-1">Bank Transfer</p>
+                    {company.bsb && <p><span className="text-slate-500">BSB:</span> {company.bsb}</p>}
+                    {company.account_number && <p><span className="text-slate-500">Account:</span> {company.account_number}</p>}
+                  </div>
+                </div>
                 </div>
               </div>
             </div>
