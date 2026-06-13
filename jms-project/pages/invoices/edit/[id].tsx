@@ -59,11 +59,14 @@ export default function EditInvoice() {
 
   const handleItemChange = (idx: number, field: string, value: any) => {
     const updated = [...items];
-    if (field === 'quantity' || field === 'unit_price') {
-      updated[idx][field as keyof InvoiceItem] = parseFloat(value) || 0;
+    if (field === 'quantity') {
+      updated[idx].quantity = parseFloat(value) || 0;
       updated[idx].total = updated[idx].quantity * updated[idx].unit_price;
-    } else {
-      updated[idx][field as keyof InvoiceItem] = value;
+    } else if (field === 'unit_price') {
+      updated[idx].unit_price = parseFloat(value) || 0;
+      updated[idx].total = updated[idx].quantity * updated[idx].unit_price;
+    } else if (field === 'description') {
+      updated[idx].description = value;
     }
     setItems(updated);
   };
