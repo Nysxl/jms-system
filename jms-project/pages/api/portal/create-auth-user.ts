@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     process.env.SUPABASE_SERVICE_ROLE_KEY!
   );
 
-  const { email, password, userId } = req.body;
+  const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   try {
