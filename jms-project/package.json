@@ -3,8 +3,7 @@
   "version": "1.0.0",
   "scripts": {
     "dev": "next dev",
-    "build": "opennextjs-cloudflare build",
-    "deploy": "opennextjs-cloudflare deploy",
+    "build": "next build --no-lint",
     "start": "next start",
     "lint": "next lint"
   },
