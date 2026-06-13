@@ -4,7 +4,7 @@ CREATE POLICY "Portal users can read their invoices"
   ON invoices
   FOR SELECT
   USING (
-    customer_id = (
+    invoices.customer_id = (
       SELECT customer_id FROM portal_users
       WHERE user_id = auth.uid()
     )
