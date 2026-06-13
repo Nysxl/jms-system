@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('email', email.trim().toLowerCase())
     .eq('password_plain', password)
     .eq('is_active', 1)
-    .single();
+    .maybeSingle();
 
   if (error) {
     console.error('Portal login DB error:', error);
