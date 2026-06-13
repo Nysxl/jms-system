@@ -1,10 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { supabase, getAdminClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     console.log('=== PORTAL LOGIN API ===');
-    console.log('Method:', req.method);
+    console.log('Env vars available:', {
+      url: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      anonKey: !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
+      serviceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    });
 
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
@@ -19,13 +23,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cleanEmail = email.trim().toLowerCase();
     console.log('Clean email:', cleanEmail);
 
-    console.log('Getting admin client...');
-    const supabaseAdmin = getAdminClient();
-    console.log('Admin client created');
+    console.log('Creating Supabase clients...');
+    const supabaseAnon = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+    );
+
+    const supabaseAdmin = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || ''
+    );
 
     // Authenticate via Supabase Auth
     console.log('Attempting Supabase Auth signInWithPassword...');
-    const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+    const { data: authData, error: authError } = await supabaseAnon.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
