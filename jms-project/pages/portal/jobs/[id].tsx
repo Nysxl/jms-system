@@ -64,8 +64,8 @@ export default function PortalJobDetail() {
       // Fetch admin's company name
       const { data: companyData } = await supabase
         .from('company_settings').select('company_name').eq('user_id', jobData.user_id).single();
-      if (companyData?.company_name) {
-        setJob(j => ({ ...j, admin_company_name: companyData.company_name }));
+      if (jobData && companyData?.company_name) {
+        setJob({ ...jobData, admin_company_name: companyData.company_name } as any);
       }
     }
     const { data: notesData } = await supabase.from('job_notes').select('*').eq('job_id', id).order('created_at', { ascending: false });
