@@ -67,7 +67,7 @@ export default function PortalJobs() {
 
     const { data, error } = await supabase
       .from('jobs')
-      .select('*, customer:customers(name)')
+      .select('*')
       .in('customer_id', customerIds)
       .order('scheduled_date', { ascending: true });
 
