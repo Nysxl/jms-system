@@ -63,16 +63,6 @@ export default function CalendarPage() {
     setSavingBulk(false);
   };
 
-  const toggleJobSelection = (jobId: string) => {
-    const newSet = new Set(selectedJobIds);
-    if (newSet.has(jobId)) {
-      newSet.delete(jobId);
-    } else {
-      newSet.add(jobId);
-    }
-    setSelectedJobIds(newSet);
-  };
-
   const daysInMonth = eachDayOfInterval({
     start: startOfMonth(currentDate),
     end: endOfMonth(currentDate),
