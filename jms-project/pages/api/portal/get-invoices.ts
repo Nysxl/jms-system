@@ -12,18 +12,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const { portalUserId } = req.query;
   if (!portalUserId) return res.status(400).json({ error: 'portalUserId required' });
 
-  const { data: portalUser, error: puError } = await supabase
-    .from('portal_users').select('customer_id').eq('id', portalUserId).maybeSingle();
+  const { data: portalUser } = await supabase
+    .from('portal_users').select('customer_id').eq('id', portalUserId).single();
 
-  if (puError) {
-    console.error('Portal user lookup error:', puError, 'for ID:', portalUserId);
-    return res.status(500).json({ error: 'Database error', details: puError?.message });
-  }
-
-  if (!portalUser) {
-    console.error('Portal user not found for ID:', portalUserId);
-    return res.status(404).json({ error: 'Portal user not found', receivedId: portalUserId });
-  }
+  if (!portalUser) return res.status(404).json({ error: 'Portal user not found', receivedId: portalUserId });
 
   const { data: subs } = await supabase
     .from('customers').select('id').eq('contractor_id', portalUser.customer_id).eq('customer_type', 'sub_contact');
