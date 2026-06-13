@@ -45,31 +45,20 @@ export default function PortalJobDetail() {
 
   const loadJobData = async () => {
     setIsLoading(true);
-    const { data: jobData } = await supabase
-      .from('jobs')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (jobData) setJob(jobData);
-
-    const { data: notesData } = await supabase
-      .from('job_notes')
-      .select('*')
-      .eq('job_id', id)
-      .order('created_at', { ascending: false });
-
-    if (notesData) setNotes(notesData);
-
-    const { data: imagesData } = await supabase
-      .from('job_images')
-      .select('*')
-      .eq('job_id', id)
-      .order('uploaded_at', { ascending: false });
-
-    if (imagesData) setImages(imagesData);
-
-    setIsLoading(false);
+    try {
+      const stored = localStorage.getItem('portal_session');
+      const pu = stored ? JSON.parse(stored) : null;
+      if (!pu) return;
+      const res = await fetch(`/api/portal/get-job?portalUserId=${pu.id}&jobId=${id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setJob(data.job);
+        setNotes(data.notes || []);
+        setImages(data.images || []);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -150,20 +139,20 @@ export default function PortalJobDetail() {
     const signatureData = canvas.toDataURL('image/png');
 
     try {
-      await supabase
-        .from('jobs')
-        .update({
-          signature_data: signatureData,
-          signed_by: portalUser?.email || 'Portal User',
-          signed_at: new Date().toISOString(),
-        })
-        .eq('id', job?.id);
-
-      if (job) {
-        setJob({ ...job, signature_data: signatureData, signed_by: portalUser?.email || 'Portal User', signed_at: new Date().toISOString() });
+      const res = await fetch('/api/portal/save-signature', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portalUserId: portalUser?.id, jobId: job?.id, signatureData, signedBy: portalUser?.email || 'Portal User' }),
+      });
+      if (res.ok) {
+        if (job) {
+          setJob({ ...job, signature_data: signatureData, signed_by: portalUser?.email || 'Portal User', signed_at: new Date().toISOString() });
+        }
+        setShowSignature(false);
+        alert('Signature saved successfully!');
+      } else {
+        alert('Failed to save signature');
       }
-      setShowSignature(false);
-      alert('Signature saved successfully!');
     } catch (err) {
       console.error('Signature save error:', err);
     }

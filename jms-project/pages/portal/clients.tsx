@@ -24,16 +24,20 @@ export default function PortalClients() {
     loadClients(pu.customer_id);
   };
 
-  const loadClients = async (customerId: string) => {
+  const loadClients = async (_customerId: string) => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from('customers')
-      .select('*')
-      .eq('contractor_id', customerId)
-      .eq('customer_type', 'sub_contact')
-      .order('name');
-    if (data) setClients(data);
-    setIsLoading(false);
+    try {
+      const stored = localStorage.getItem('portal_session');
+      const pu = stored ? JSON.parse(stored) : null;
+      if (!pu) return;
+      const res = await fetch(`/api/portal/get-data?portalUserId=${pu.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setClients(data.subContacts || []);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const filtered = clients.filter(c => {

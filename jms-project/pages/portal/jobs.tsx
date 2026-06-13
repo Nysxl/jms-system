@@ -52,28 +52,22 @@ export default function PortalJobs() {
     }
   };
 
-  const loadData = async (customerId: string) => {
+  const loadData = async (_customerId: string) => {
     setIsLoading(true);
+    try {
+      const stored = localStorage.getItem('portal_session');
+      const pu = stored ? JSON.parse(stored) : null;
+      if (!pu) return;
 
-    // Load sub-contacts
-    const { data: subs } = await supabase
-      .from('customers')
-      .select('id, name, company_name')
-      .eq('contractor_id', customerId)
-      .eq('customer_type', 'sub_contact');
-
-    if (subs) setSubContacts(subs);
-
-    // Load jobs for this customer + all sub-contacts
-    const customerIds = [customerId, ...(subs?.map(s => s.id) || [])];
-    const { data } = await supabase
-      .from('jobs')
-      .select('*')
-      .in('customer_id', customerIds)
-      .order('created_at', { ascending: false });
-
-    if (data) setJobs(data);
-    setIsLoading(false);
+      const res = await fetch(`/api/portal/get-data?portalUserId=${pu.id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setSubContacts(data.subContacts || []);
+        setJobs(data.jobs || []);
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleCreateJob = async (e: React.FormEvent) => {
