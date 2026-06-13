@@ -292,13 +292,14 @@ export default function Inventory() {
     const matchCategory = filterCategory === 'all' || item.category === filterCategory;
     const matchStock =
       filterStock === 'all' ? true :
-      filterStock === 'low' ? item.quantity <= (item.min_quantity || 0) && item.quantity > 0 :
-      filterStock === 'out' ? item.quantity === 0 :
-      filterStock === 'ok' ? item.quantity > (item.min_quantity || 0) : true;
+      filterStock === 'low' ? item.is_stock_item && item.quantity <= (item.min_quantity || 0) && item.quantity > 0 :
+      filterStock === 'out' ? item.is_stock_item && item.quantity === 0 :
+      filterStock === 'ok' ? item.is_stock_item && item.quantity > (item.min_quantity || 0) : true;
     return matchSearch && matchCategory && matchStock;
   });
 
   const stockStatus = (item: InventoryItem) => {
+    if (!item.is_stock_item) return { label: 'Unlimited', cls: 'bg-purple-500/10 text-purple-400 border border-purple-500/30' };
     if (item.quantity === 0) return { label: 'Out of stock', cls: 'bg-red-500/10 text-red-400 border border-red-500/30' };
     if (item.min_quantity && item.quantity <= item.min_quantity) return { label: 'Low stock', cls: 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30' };
     return { label: 'In stock', cls: 'bg-green-500/10 text-green-400 border border-green-500/30' };
@@ -308,9 +309,9 @@ export default function Inventory() {
 
   const stats = {
     total: items.length,
-    lowStock: items.filter(i => i.min_quantity && i.quantity <= i.min_quantity && i.quantity > 0).length,
-    outOfStock: items.filter(i => i.quantity === 0).length,
-    totalValue: items.reduce((sum, i) => sum + ((i.unit_cost || 0) * i.quantity), 0),
+    lowStock: items.filter(i => i.is_stock_item && i.min_quantity && i.quantity <= i.min_quantity && i.quantity > 0).length,
+    outOfStock: items.filter(i => i.is_stock_item && i.quantity === 0).length,
+    totalValue: items.reduce((sum, i) => sum + ((i.unit_cost || 0) * (i.is_stock_item ? i.quantity : 0)), 0),
   };
 
   return (
@@ -394,74 +395,147 @@ export default function Inventory() {
             )}
           </div>
         ) : (
-          <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-700 bg-slate-900/50">
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Name</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">SKU</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Category</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Qty</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Status</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Cost</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Price</th>
-                    <th className="px-4 py-3 text-left text-slate-400 font-medium">Location</th>
-                    <th className="px-4 py-3 text-right text-slate-400 font-medium">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((item, idx) => {
-                    const status = stockStatus(item);
-                    return (
-                      <tr key={item.id}
-                        className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition ${
-                          item.quantity === 0 ? 'bg-red-950/30' :
-                          item.min_quantity && item.quantity <= item.min_quantity ? 'bg-yellow-950/30' :
-                          ''
-                        } ${idx === filtered.length - 1 ? 'border-b-0' : ''}`}>
-                        <td className="px-4 py-3">
-                          <p className="text-white font-medium">{item.name}</p>
-                          {item.supplier && <p className="text-slate-500 text-xs">{item.supplier}</p>}
-                        </td>
-                        <td className="px-4 py-3 text-slate-400">{item.sku || '—'}</td>
-                        <td className="px-4 py-3 text-slate-400">{item.category || '—'}</td>
-                        <td className="px-4 py-3">
-                          <span className="text-white font-semibold">{item.quantity}</span>
-                          {item.min_quantity ? <span className="text-slate-600 text-xs ml-1">/ {item.min_quantity} min</span> : null}
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${status.cls}`}>{status.label}</span>
-                        </td>
-                        <td className="px-4 py-3 text-slate-300">{item.unit_cost ? `$${item.unit_cost.toFixed(2)}` : '—'}</td>
-                        <td className="px-4 py-3 text-slate-300">{item.unit_price ? `$${item.unit_price.toFixed(2)}` : '—'}</td>
-                        <td className="px-4 py-3 text-slate-400">{item.location || '—'}</td>
-                        <td className="px-4 py-3">
-                          <div className="flex gap-1.5 justify-end">
-                            <button onClick={() => openTransaction(item)}
-                              className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs px-2.5 py-1.5 rounded-lg transition" title="Stock In/Out">
-                              ±
-                            </button>
-                            <button onClick={() => openHistory(item)}
-                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition" title="History">
-                              📋
-                            </button>
-                            <button onClick={() => openEdit(item)}
-                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition">
-                              Edit
-                            </button>
-                            <button onClick={() => setDeleteConfirm(item.id)}
-                              className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1.5 rounded-lg transition">
-                              ✕
-                            </button>
-                          </div>
-                        </td>
+          <div className="space-y-6">
+            {/* Tracked Stock Items */}
+            {filtered.some(i => i.is_stock_item) && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-slate-900/50 border-b border-slate-700">
+                  <h3 className="text-white font-semibold">Tracked Stock</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-700 bg-slate-900/30">
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Name</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">SKU</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Category</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Qty</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Status</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Cost</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Price</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Location</th>
+                        <th className="px-4 py-3 text-right text-slate-400 font-medium">Actions</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {filtered.filter(i => i.is_stock_item).map((item, idx) => {
+                        const status = stockStatus(item);
+                        const filtered_tracked = filtered.filter(i => i.is_stock_item);
+                        return (
+                          <tr key={item.id}
+                            className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition ${
+                              item.quantity === 0 ? 'bg-red-950/30' :
+                              item.min_quantity && item.quantity <= item.min_quantity ? 'bg-yellow-950/30' :
+                              ''
+                            } ${idx === filtered_tracked.length - 1 ? 'border-b-0' : ''}`}>
+                            <td className="px-4 py-3">
+                              <p className="text-white font-medium">{item.name}</p>
+                              {item.supplier && <p className="text-slate-500 text-xs">{item.supplier}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400">{item.sku || '—'}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.category || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className="text-white font-semibold">{item.quantity}</span>
+                              {item.min_quantity ? <span className="text-slate-600 text-xs ml-1">/ {item.min_quantity} min</span> : null}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${status.cls}`}>{status.label}</span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-300">{item.unit_cost ? `$${item.unit_cost.toFixed(2)}` : '—'}</td>
+                            <td className="px-4 py-3 text-slate-300">{item.unit_price ? `$${item.unit_price.toFixed(2)}` : '—'}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.location || '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1.5 justify-end">
+                                <button onClick={() => openTransaction(item)}
+                                  className="bg-blue-500/10 hover:bg-blue-500/20 text-blue-400 text-xs px-2.5 py-1.5 rounded-lg transition" title="Stock In/Out">
+                                  ±
+                                </button>
+                                <button onClick={() => openHistory(item)}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition" title="History">
+                                  📋
+                                </button>
+                                <button onClick={() => openEdit(item)}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition">
+                                  Edit
+                                </button>
+                                <button onClick={() => setDeleteConfirm(item.id)}
+                                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1.5 rounded-lg transition">
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
+            {/* Untracked / Service Items */}
+            {filtered.some(i => !i.is_stock_item) && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                <div className="px-4 py-3 bg-slate-900/50 border-b border-slate-700">
+                  <h3 className="text-white font-semibold">Services & Untracked Items</h3>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-slate-700 bg-slate-900/30">
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Name</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">SKU</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Category</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Availability</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Cost</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Unit Price</th>
+                        <th className="px-4 py-3 text-left text-slate-400 font-medium">Location</th>
+                        <th className="px-4 py-3 text-right text-slate-400 font-medium">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filtered.filter(i => !i.is_stock_item).map((item, idx) => {
+                        const status = stockStatus(item);
+                        const filtered_untracked = filtered.filter(i => !i.is_stock_item);
+                        return (
+                          <tr key={item.id}
+                            className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition ${idx === filtered_untracked.length - 1 ? 'border-b-0' : ''}`}>
+                            <td className="px-4 py-3">
+                              <p className="text-white font-medium">{item.name}</p>
+                              {item.supplier && <p className="text-slate-500 text-xs">{item.supplier}</p>}
+                            </td>
+                            <td className="px-4 py-3 text-slate-400">{item.sku || '—'}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.category || '—'}</td>
+                            <td className="px-4 py-3">
+                              <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${status.cls}`}>{status.label}</span>
+                            </td>
+                            <td className="px-4 py-3 text-slate-300">{item.unit_cost ? `$${item.unit_cost.toFixed(2)}` : '—'}</td>
+                            <td className="px-4 py-3 text-slate-300">{item.unit_price ? `$${item.unit_price.toFixed(2)}` : '—'}</td>
+                            <td className="px-4 py-3 text-slate-400">{item.location || '—'}</td>
+                            <td className="px-4 py-3">
+                              <div className="flex gap-1.5 justify-end">
+                                <button onClick={() => openHistory(item)}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition" title="History">
+                                  📋
+                                </button>
+                                <button onClick={() => openEdit(item)}
+                                  className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-2.5 py-1.5 rounded-lg transition">
+                                  Edit
+                                </button>
+                                <button onClick={() => setDeleteConfirm(item.id)}
+                                  className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2.5 py-1.5 rounded-lg transition">
+                                  ✕
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
@@ -493,16 +567,20 @@ export default function Inventory() {
                   <input type="text" value={form.category} onChange={e => setForm({ ...form, category: e.target.value })}
                     placeholder="e.g. Electrical, Tools" className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
                 </div>
-                <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Quantity</label>
-                  <input type="number" min="0" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
-                </div>
-                <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Min Quantity (low stock alert)</label>
-                  <input type="number" min="0" value={form.min_quantity} onChange={e => setForm({ ...form, min_quantity: e.target.value })}
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
-                </div>
+                {form.is_stock_item && (
+                  <>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Quantity</label>
+                      <input type="number" min="0" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                    </div>
+                    <div>
+                      <label className="block text-slate-300 text-sm font-medium mb-1">Min Quantity (low stock alert)</label>
+                      <input type="number" min="0" value={form.min_quantity} onChange={e => setForm({ ...form, min_quantity: e.target.value })}
+                        className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                    </div>
+                  </>
+                )}
                 <div>
                   <label className="block text-slate-300 text-sm font-medium mb-1">Unit Cost ($)</label>
                   <input type="number" min="0" step="0.01" value={form.unit_cost} onChange={e => setForm({ ...form, unit_cost: e.target.value })}
