@@ -173,6 +173,18 @@ export interface InventoryItem {
   updated_at: string;
 }
 
+export interface CustomerPricing {
+  id: string;
+  user_id: string;
+  customer_id: string;
+  inventory_id: string;
+  override_price: number;
+  created_at: string;
+  updated_at: string;
+  // joined fields
+  inventory?: InventoryItem;
+}
+
 export interface InventoryTransaction {
   id: string;
   inventory_id: string;

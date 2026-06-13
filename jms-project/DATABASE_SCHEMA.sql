@@ -225,6 +225,21 @@ CREATE TABLE IF NOT EXISTS portal_activity_log (
   FOREIGN KEY (portal_user_id) REFERENCES portal_users(id)
 );
 
+-- Customer Pricing (override inventory prices per customer)
+CREATE TABLE IF NOT EXISTS customer_pricing (
+  id TEXT PRIMARY KEY,
+  user_id TEXT NOT NULL,
+  customer_id TEXT NOT NULL,
+  inventory_id TEXT NOT NULL,
+  override_price REAL NOT NULL, -- price for this customer for this item
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES users(id),
+  FOREIGN KEY (customer_id) REFERENCES customers(id),
+  FOREIGN KEY (inventory_id) REFERENCES inventory(id),
+  UNIQUE(customer_id, inventory_id) -- one price per customer per item
+);
+
 -- Create Indexes
 CREATE INDEX idx_customers_user_id ON customers(user_id);
 CREATE INDEX idx_customers_contractor_id ON customers(contractor_id);
@@ -243,6 +258,9 @@ CREATE INDEX idx_inventory_sku ON inventory(sku);
 CREATE INDEX idx_portal_users_customer_id ON portal_users(customer_id);
 CREATE INDEX idx_portal_users_email ON portal_users(email);
 CREATE INDEX idx_portal_activity_portal_user_id ON portal_activity_log(portal_user_id);
+CREATE INDEX idx_customer_pricing_user_id ON customer_pricing(user_id);
+CREATE INDEX idx_customer_pricing_customer_id ON customer_pricing(customer_id);
+CREATE INDEX idx_customer_pricing_inventory_id ON customer_pricing(inventory_id);
 
 -- ============================================================
 -- MIGRATION: run these against an existing database

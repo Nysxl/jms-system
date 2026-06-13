@@ -123,7 +123,7 @@ function ContractorPortal({ session }: { session: PortalSession }) {
           { label: 'Contacts', value: subContacts.length },
           { label: 'Total Jobs', value: totalJobs },
           { label: 'Active', value: pendingJobs, accent: 'text-blue-400' },
-          { label: 'Invoiced', value: `$${totalInvoiced.toLocaleString('en-AU', { minimumFractionDigits: 2 })}` },
+          { label: 'Completed', value: completedJobs, accent: 'text-green-400' },
         ].map(stat => (
           <div key={stat.label} className="bg-slate-800 border border-slate-700 rounded-xl p-4">
             <p className="text-slate-400 text-xs mb-1">{stat.label}</p>

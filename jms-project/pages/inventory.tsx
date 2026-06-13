@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { Header } from '@/components/Header';
 import { supabase } from '@/lib/supabase';
-import { InventoryItem, InventoryTransaction } from '@/lib/types';
+import { InventoryItem, InventoryTransaction, Customer, CustomerPricing } from '@/lib/types';
 
 const emptyForm = {
   name: '',
@@ -56,6 +56,14 @@ export default function Inventory() {
   // Delete
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
+  // Customer pricing modal
+  const [showPricingModal, setShowPricingModal] = useState(false);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [selectedPricingCustomer, setSelectedPricingCustomer] = useState<Customer | null>(null);
+  const [customerPricing, setCustomerPricing] = useState<Record<string, number>>({});
+  const [savingPricing, setSavingPricing] = useState(false);
+  const [pricingError, setPricingError] = useState('');
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push('/login'); return; }
@@ -71,6 +79,71 @@ export default function Inventory() {
       .order('name', { ascending: true });
     if (data) setItems(data);
     setIsLoading(false);
+  };
+
+  const openPricingModal = async () => {
+    setPricingError('');
+    const { data: custs } = await supabase
+      .from('customers')
+      .select('*')
+      .order('name', { ascending: true });
+    if (custs) setCustomers(custs);
+    setSelectedPricingCustomer(null);
+    setCustomerPricing({});
+    setShowPricingModal(true);
+  };
+
+  const selectCustomerForPricing = async (customer: Customer) => {
+    setSelectedPricingCustomer(customer);
+    setPricingError('');
+    const { data: pricing } = await supabase
+      .from('customer_pricing')
+      .select('*')
+      .eq('customer_id', customer.id);
+    if (pricing) {
+      const map: Record<string, number> = {};
+      pricing.forEach((p: CustomerPricing) => {
+        map[p.inventory_id] = p.override_price;
+      });
+      setCustomerPricing(map);
+    } else {
+      setCustomerPricing({});
+    }
+  };
+
+  const savePricing = async () => {
+    if (!selectedPricingCustomer) return;
+    setSavingPricing(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPricingError('Not logged in.'); setSavingPricing(false); return; }
+
+    try {
+      // Delete old pricing
+      await supabase.from('customer_pricing').delete().eq('customer_id', selectedPricingCustomer.id);
+
+      // Insert new pricing for items with overrides
+      const toInsert = Object.entries(customerPricing)
+        .filter(([_, price]) => price != null && price > 0)
+        .map(([inv_id, price]) => ({
+          user_id: user.id,
+          customer_id: selectedPricingCustomer.id,
+          inventory_id: inv_id,
+          override_price: price,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }));
+
+      if (toInsert.length > 0) {
+        const { error } = await supabase.from('customer_pricing').insert(toInsert);
+        if (error) throw error;
+      }
+
+      setSavingPricing(false);
+      setShowPricingModal(false);
+    } catch (err: any) {
+      setPricingError(err.message || 'Error saving pricing.');
+      setSavingPricing(false);
+    }
   };
 
   const openCreate = () => {
@@ -249,10 +322,16 @@ export default function Inventory() {
             <h2 className="text-3xl font-bold text-white">Inventory</h2>
             <p className="text-slate-400 mt-1">{items.length} item{items.length !== 1 ? 's' : ''}</p>
           </div>
-          <button onClick={openCreate}
-            className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition">
-            + Add Item
-          </button>
+          <div className="flex gap-2">
+            <button onClick={openPricingModal}
+              className="bg-purple-600 hover:bg-purple-700 text-white font-semibold py-2 px-6 rounded-lg transition">
+              💰 Customer Pricing
+            </button>
+            <button onClick={openCreate}
+              className="bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-6 rounded-lg transition">
+              + Add Item
+            </button>
+          </div>
         </div>
 
         {/* Stats */}
@@ -557,6 +636,117 @@ export default function Inventory() {
                     </div>
                   ))}
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Customer Pricing Modal */}
+      {showPricingModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold text-lg">Customer Pricing</h3>
+              <button onClick={() => setShowPricingModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+
+            <div className="p-6 space-y-6">
+              {pricingError && (
+                <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">
+                  {pricingError}
+                </div>
+              )}
+
+              {!selectedPricingCustomer ? (
+                <>
+                  <div>
+                    <h4 className="text-white font-medium mb-3">Select a customer</h4>
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {customers.length === 0 ? (
+                        <p className="text-slate-500 text-sm">No customers found.</p>
+                      ) : (
+                        customers.map(c => (
+                          <button
+                            key={c.id}
+                            onClick={() => selectCustomerForPricing(c)}
+                            className="w-full text-left bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-lg transition"
+                          >
+                            <p className="font-medium">{c.company_name || c.name}</p>
+                            <p className="text-slate-400 text-sm">{c.email || ''}</p>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-white font-medium">
+                      Pricing for <span className="text-blue-400">{selectedPricingCustomer.company_name || selectedPricingCustomer.name}</span>
+                    </h4>
+                    <button
+                      onClick={() => setSelectedPricingCustomer(null)}
+                      className="text-slate-500 hover:text-slate-300 text-sm transition"
+                    >
+                      Change customer
+                    </button>
+                  </div>
+
+                  {items.length === 0 ? (
+                    <p className="text-slate-500 text-sm">No inventory items to price.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto border border-slate-700 rounded-lg p-3 bg-slate-900/50">
+                      {items.map(item => (
+                        <div key={item.id} className="flex items-center gap-3 p-2 bg-slate-800 rounded">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-sm font-medium">{item.name}</p>
+                            <p className="text-slate-500 text-xs">Standard: ${(item.unit_price || 0).toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-slate-400 text-sm">$</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              value={customerPricing[item.id] || ''}
+                              onChange={e => {
+                                const val = e.target.value ? parseFloat(e.target.value) : 0;
+                                setCustomerPricing(prev => ({
+                                  ...prev,
+                                  [item.id]: val > 0 ? val : 0,
+                                }));
+                              }}
+                              placeholder="Override price"
+                              className="w-24 bg-slate-700 border border-slate-600 text-white rounded px-2 py-1 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                            />
+                            {customerPricing[item.id] > 0 && customerPricing[item.id] !== item.unit_price && (
+                              <span className="text-yellow-500 text-xs">✓</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="flex gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedPricingCustomer(null)}
+                      className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition"
+                    >
+                      Back
+                    </button>
+                    <button
+                      onClick={savePricing}
+                      disabled={savingPricing}
+                      className="flex-1 bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition"
+                    >
+                      {savingPricing ? 'Saving...' : 'Save Pricing'}
+                    </button>
+                  </div>
+                </>
               )}
             </div>
           </div>
