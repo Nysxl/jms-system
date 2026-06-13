@@ -10,11 +10,13 @@ export interface User {
 }
 
 // Customer Types
+export type CustomerType = 'direct' | 'contractor' | 'sub_contact';
+
 export interface Customer {
   id: string;
   user_id: string;
   name: string;
-  email: string;
+  email?: string;
   phone?: string;
   address?: string;
   city?: string;
@@ -22,6 +24,12 @@ export interface Customer {
   zip_code?: string;
   company_name?: string;
   notes?: string;
+  customer_type: CustomerType;
+  contractor_id?: string; // set when customer_type === 'sub_contact'
+  // joined fields
+  contractor?: Customer;
+  sub_contacts?: Customer[];
+  portal_user?: PortalUser;
   created_at: string;
   updated_at: string;
 }
@@ -34,6 +42,7 @@ export interface Job {
   id: string;
   user_id: string;
   customer_id: string;
+  billing_customer_id?: string; // if set, invoices go here instead of customer_id
   title: string;
   description?: string;
   status: JobStatus;
@@ -42,6 +51,9 @@ export interface Job {
   completed_date?: string;
   total_amount?: number;
   notes?: string;
+  // joined fields
+  customer?: Customer;
+  billing_customer?: Customer;
   created_at: string;
   updated_at: string;
 }
@@ -52,6 +64,9 @@ export interface JobNote {
   job_id: string;
   user_id: string;
   content: string;
+  display_timestamp?: string; // overridable; falls back to created_at
+  author_type: 'admin' | 'portal_user';
+  portal_user_id?: string;
   created_at: string;
   updated_at: string;
 }
@@ -64,6 +79,10 @@ export interface JobImage {
   image_url: string;
   file_name: string;
   file_size?: number;
+  caption?: string;
+  display_timestamp?: string; // overridable; falls back to uploaded_at
+  author_type: 'admin' | 'portal_user';
+  portal_user_id?: string;
   uploaded_at: string;
 }
 
@@ -163,6 +182,42 @@ export interface InventoryTransaction {
   reference_id?: string;
   notes?: string;
   created_at: string;
+}
+
+// Portal User Types
+export interface PortalUser {
+  id: string;
+  user_id: string;
+  customer_id: string;
+  email: string;
+  password_plain: string; // stored for admin visibility
+  is_active: boolean;
+  last_login?: string;
+  customer?: Customer;
+  created_at: string;
+  updated_at: string;
+}
+
+export type PortalActivityType =
+  | 'login'
+  | 'logout'
+  | 'job_viewed'
+  | 'note_added'
+  | 'note_edited'
+  | 'photo_added'
+  | 'password_changed';
+
+export interface PortalActivityLog {
+  id: string;
+  portal_user_id: string;
+  user_id: string;
+  action_type: PortalActivityType;
+  entity_type?: 'job' | 'note' | 'image';
+  entity_id?: string;
+  details?: string; // JSON
+  ip_address?: string;
+  created_at: string;
+  portal_user?: PortalUser;
 }
 
 // API Response Types

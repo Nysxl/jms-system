@@ -7,6 +7,7 @@ import { Customer, JobStatus, JobPriority } from '@/lib/types';
 
 const emptyForm = {
   customer_id: '',
+  billing_customer_id: '',
   title: '',
   description: '',
   status: 'pending' as JobStatus,
@@ -32,6 +33,19 @@ export default function NewJob() {
     });
   }, [router]);
 
+  const selectedCustomer = customers.find(c => c.id === form.customer_id);
+  const isSubContact = selectedCustomer?.customer_type === 'sub_contact';
+  // Auto-set billing to contractor when sub_contact is selected
+  const handleCustomerChange = (id: string) => {
+    const c = customers.find(x => x.id === id);
+    setForm(prev => ({
+      ...prev,
+      customer_id: id,
+      billing_customer_id: c?.customer_type === 'sub_contact' && c.contractor_id ? c.contractor_id : '',
+    }));
+  };
+
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
@@ -45,6 +59,7 @@ export default function NewJob() {
 
     const { data, error: err } = await supabase.from('jobs').insert([{
       customer_id: form.customer_id,
+      billing_customer_id: form.billing_customer_id || null,
       title: form.title,
       description: form.description,
       status: form.status,
@@ -82,15 +97,48 @@ export default function NewJob() {
             )}
 
             <div>
-              <label className="block text-slate-300 text-sm font-medium mb-1">Customer *</label>
+              <label className="block text-slate-300 text-sm font-medium mb-1">Customer / Site Contact *</label>
               <select
                 value={form.customer_id}
-                onChange={e => setForm({ ...form, customer_id: e.target.value })}
+                onChange={e => handleCustomerChange(e.target.value)}
                 className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
               >
                 <option value="">Select a customer</option>
-                {customers.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}{c.company_name ? ` — ${c.company_name}` : ''}</option>
+                <optgroup label="Direct Clients">
+                  {customers.filter(c => c.customer_type === 'direct' || !c.customer_type).map(c => (
+                    <option key={c.id} value={c.id}>{c.name}{c.company_name ? ` — ${c.company_name}` : ''}</option>
+                  ))}
+                </optgroup>
+                <optgroup label="Contractor Contacts">
+                  {customers.filter(c => c.customer_type === 'sub_contact').map(c => {
+                    const contractor = customers.find(x => x.id === c.contractor_id);
+                    return (
+                      <option key={c.id} value={c.id}>{c.name} ({contractor?.company_name || contractor?.name || 'contractor'})</option>
+                    );
+                  })}
+                </optgroup>
+              </select>
+              {isSubContact && selectedCustomer && (
+                <p className="text-slate-500 text-xs mt-1">
+                  Contact under {customers.find(x => x.id === selectedCustomer.contractor_id)?.company_name || 'contractor'}
+                </p>
+              )}
+            </div>
+
+            {/* Billing override — shown always but pre-filled for sub_contacts */}
+            <div>
+              <label className="block text-slate-300 text-sm font-medium mb-1">
+                Bill To
+                {isSubContact && <span className="text-slate-500 text-xs font-normal ml-2">(defaults to contractor)</span>}
+              </label>
+              <select
+                value={form.billing_customer_id}
+                onChange={e => setForm({ ...form, billing_customer_id: e.target.value })}
+                className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+              >
+                <option value="">Same as site contact</option>
+                {customers.filter(c => c.customer_type !== 'sub_contact').map(c => (
+                  <option key={c.id} value={c.id}>{c.company_name || c.name}</option>
                 ))}
               </select>
             </div>

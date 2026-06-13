@@ -22,10 +22,13 @@ export const Header: React.FC<{ username?: string }> = ({ username }) => {
             Jobs
           </Link>
           <Link href="/customers" className="text-slate-300 hover:text-white transition">
-            Customers
+            Contacts
           </Link>
           <Link href="/inventory" className="text-slate-300 hover:text-white transition">
             Inventory
+          </Link>
+          <Link href="/portal-management" className="text-slate-300 hover:text-white transition">
+            Portal
           </Link>
           <Link href="/settings" className="text-slate-300 hover:text-white transition">
             Settings

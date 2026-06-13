@@ -82,11 +82,17 @@ export default function JobDetail() {
 
   // Notes
   const [newNote, setNewNote] = useState('');
+  const [newNoteTimestamp, setNewNoteTimestamp] = useState('');
   const [savingNote, setSavingNote] = useState(false);
+  const [editingNoteTimestamp, setEditingNoteTimestamp] = useState<string | null>(null); // note id being edited
+  const [editingNoteTs, setEditingNoteTs] = useState('');
 
   // Photos
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [photoTimestamp, setPhotoTimestamp] = useState('');
+  const [editingImageTimestamp, setEditingImageTimestamp] = useState<string | null>(null);
+  const [editingImageTs, setEditingImageTs] = useState('');
 
   // Attachments
   const [uploadingAttachment, setUploadingAttachment] = useState(false);
@@ -171,17 +177,30 @@ export default function JobDetail() {
     if (!newNote.trim()) return;
     setSavingNote(true);
     const { data: { user } } = await supabase.auth.getUser();
+    const now = new Date().toISOString();
     await supabase.from('job_notes').insert([{
       job_id: id, user_id: user?.id, content: newNote.trim(),
-      created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      display_timestamp: newNoteTimestamp ? new Date(newNoteTimestamp).toISOString() : null,
+      author_type: 'admin',
+      created_at: now, updated_at: now,
     }]);
     setNewNote('');
+    setNewNoteTimestamp('');
     setSavingNote(false);
     loadNotes();
   };
 
   const handleDeleteNote = async (noteId: string) => {
     await supabase.from('job_notes').delete().eq('id', noteId);
+    loadNotes();
+  };
+
+  const saveNoteTimestamp = async (noteId: string) => {
+    await supabase.from('job_notes').update({
+      display_timestamp: editingNoteTs ? new Date(editingNoteTs).toISOString() : null,
+      updated_at: new Date().toISOString(),
+    }).eq('id', noteId);
+    setEditingNoteTimestamp(null);
     loadNotes();
   };
 
@@ -198,7 +217,10 @@ export default function JobDetail() {
       const { data: urlData } = supabase.storage.from('job-photos').getPublicUrl(path);
       await supabase.from('job_images').insert([{
         job_id: id, user_id: user?.id, image_url: urlData.publicUrl,
-        file_name: file.name, file_size: file.size, uploaded_at: new Date().toISOString(),
+        file_name: file.name, file_size: file.size,
+        display_timestamp: photoTimestamp ? new Date(photoTimestamp).toISOString() : null,
+        author_type: 'admin',
+        uploaded_at: new Date().toISOString(),
       }]);
     }
     setUploadingPhoto(false);
@@ -209,6 +231,14 @@ export default function JobDetail() {
     const path = image.image_url.split('/job-photos/')[1];
     if (path) await supabase.storage.from('job-photos').remove([decodeURIComponent(path)]);
     await supabase.from('job_images').delete().eq('id', image.id);
+    loadImages();
+  };
+
+  const saveImageTimestamp = async (imageId: string) => {
+    await supabase.from('job_images').update({
+      display_timestamp: editingImageTs ? new Date(editingImageTs).toISOString() : null,
+    }).eq('id', imageId);
+    setEditingImageTimestamp(null);
     loadImages();
   };
 
@@ -517,13 +547,20 @@ export default function JobDetail() {
 
             {/* Photos */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-2">
                 <h3 className="text-white font-semibold">Photos</h3>
                 <button onClick={() => fileRef.current?.click()} disabled={uploadingPhoto}
                   className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
                   {uploadingPhoto ? 'Uploading...' : '+ Add Photos'}
                 </button>
                 <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+              </div>
+              {/* Timestamp for next upload */}
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-slate-500 text-xs">Timestamp uploads:</span>
+                <input type="datetime-local" value={photoTimestamp} onChange={e => setPhotoTimestamp(e.target.value)}
+                  className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
+                {photoTimestamp && <button onClick={() => setPhotoTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
               </div>
               {images.length === 0 ? (
                 <div onClick={() => fileRef.current?.click()}
@@ -534,10 +571,27 @@ export default function JobDetail() {
               ) : (
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                   {images.map(img => (
-                    <div key={img.id} className="relative group rounded-lg overflow-hidden aspect-square bg-slate-700">
-                      <img src={img.image_url} alt={img.file_name} className="w-full h-full object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                    <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
+                      <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
                       <button onClick={() => handleDeletePhoto(img)}
                         className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
+                      {/* Timestamp display/edit */}
+                      <div className="px-2 py-1 bg-slate-800/90">
+                        {editingImageTimestamp === img.id ? (
+                          <div className="flex items-center gap-1">
+                            <input type="datetime-local" value={editingImageTs} onChange={e => setEditingImageTs(e.target.value)}
+                              className="flex-1 bg-slate-700 border border-slate-500 text-slate-200 rounded px-1 py-0.5 text-xs focus:outline-none" />
+                            <button onClick={() => saveImageTimestamp(img.id)} className="text-green-400 text-xs transition">✓</button>
+                            <button onClick={() => setEditingImageTimestamp(null)} className="text-slate-500 text-xs transition">✕</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setEditingImageTimestamp(img.id); setEditingImageTs((img.display_timestamp || img.uploaded_at).slice(0, 16)); }}
+                            className="text-slate-500 hover:text-slate-300 text-xs transition w-full text-left truncate">
+                            {formatDateTime(img.display_timestamp || img.uploaded_at)}
+                            {img.display_timestamp && img.display_timestamp !== img.uploaded_at && <span className="ml-1 text-yellow-600">✎</span>}
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ))}
                   <div onClick={() => fileRef.current?.click()}
@@ -603,11 +657,20 @@ export default function JobDetail() {
             {/* Notes */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Notes</h3>
-              <form onSubmit={handleAddNote} className="flex gap-2 mb-4">
-                <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..."
-                  className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
-                <button type="submit" disabled={savingNote || !newNote.trim()}
-                  className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition">Add</button>
+              <form onSubmit={handleAddNote} className="space-y-2 mb-4">
+                <div className="flex gap-2">
+                  <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..."
+                    className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                  <button type="submit" disabled={savingNote || !newNote.trim()}
+                    className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition">Add</button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-500 text-xs">Timestamp:</span>
+                  <input type="datetime-local" value={newNoteTimestamp} onChange={e => setNewNoteTimestamp(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
+                  {newNoteTimestamp && <button type="button" onClick={() => setNewNoteTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
+                  {!newNoteTimestamp && <span className="text-slate-600 text-xs italic">defaults to now</span>}
+                </div>
               </form>
               {notes.length === 0 ? (
                 <p className="text-slate-500 text-sm text-center py-4">No notes yet.</p>
@@ -617,7 +680,27 @@ export default function JobDetail() {
                     <div key={note.id} className="flex gap-3 group">
                       <div className="flex-1 bg-slate-900 rounded-lg px-4 py-3">
                         <p className="text-slate-300 text-sm">{note.content}</p>
-                        <p className="text-slate-600 text-xs mt-1">{formatDateTime(note.created_at)}</p>
+                        <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          {note.author_type === 'portal_user' && (
+                            <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">Client</span>
+                          )}
+                          {editingNoteTimestamp === note.id ? (
+                            <div className="flex items-center gap-1">
+                              <input type="datetime-local" value={editingNoteTs} onChange={e => setEditingNoteTs(e.target.value)}
+                                className="bg-slate-800 border border-slate-600 text-slate-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-500" />
+                              <button onClick={() => saveNoteTimestamp(note.id)} className="text-green-400 hover:text-green-300 text-xs transition">✓</button>
+                              <button onClick={() => setEditingNoteTimestamp(null)} className="text-slate-500 hover:text-slate-300 text-xs transition">✕</button>
+                            </div>
+                          ) : (
+                            <button onClick={() => { setEditingNoteTimestamp(note.id); setEditingNoteTs(note.display_timestamp ? note.display_timestamp.slice(0, 16) : note.created_at.slice(0, 16)); }}
+                              className="text-slate-600 hover:text-slate-400 text-xs transition" title="Edit timestamp">
+                              {formatDateTime(note.display_timestamp || note.created_at)}
+                              {note.display_timestamp && note.display_timestamp !== note.created_at && (
+                                <span className="ml-1 text-yellow-600">✎</span>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <button onClick={() => handleDeleteNote(note.id)}
                         className="text-slate-600 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition">✕</button>
