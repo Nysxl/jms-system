@@ -23,7 +23,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     password,
   });
 
+  console.log('Auth attempt:', { email: email.trim().toLowerCase(), authError, userExists: !!authData?.user });
+
   if (authError || !authData.user) {
+    console.error('Auth failed:', authError?.message);
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
@@ -35,7 +38,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('is_active', 1)
     .maybeSingle();
 
+  console.log('Portal user lookup:', { email: email.trim().toLowerCase(), portalError, userFound: !!portalUser, isActive: portalUser?.is_active });
+
   if (portalError || !portalUser) {
+    console.error('Portal user not found:', portalError?.message);
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
