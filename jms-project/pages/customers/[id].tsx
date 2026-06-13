@@ -13,7 +13,6 @@ export default function CustomerDetail() {
   const [subContacts, setSubContacts] = useState<Customer[]>([]);
   const [jobs, setJobs] = useState<any[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
-  const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [tab, setTab] = useState<'jobs' | 'invoices' | 'visits' | 'sub-contacts'>('jobs');
 
@@ -29,11 +28,10 @@ export default function CustomerDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    const [{ data: cust }, { data: jobsData }, { data: invData }, { data: repsData }] = await Promise.all([
+    const [{ data: cust }, { data: jobsData }, { data: invData }] = await Promise.all([
       supabase.from('customers').select('*').eq('id', id).single(),
       supabase.from('jobs').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
       supabase.from('invoices').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
-      supabase.from('service_reports').select('*, job:jobs(title)').eq('job_id', id).order('created_at', { ascending: false }).limit(50),
     ]);
     if (cust) {
       setCustomer(cust);
@@ -46,12 +44,6 @@ export default function CustomerDetail() {
     }
     if (jobsData) setJobs(jobsData);
     if (invData) setInvoices(invData);
-    // get reports via jobs
-    if (jobsData && jobsData.length > 0) {
-      const jobIds = jobsData.map((j: any) => j.id);
-      const { data: reps } = await supabase.from('service_reports').select('*, job:jobs(title)').in('job_id', jobIds).order('created_at', { ascending: false });
-      if (reps) setReports(reps);
-    }
     setIsLoading(false);
   };
 
