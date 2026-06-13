@@ -11,6 +11,8 @@ export default function PortalInvoices() {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
+  const [invoiceJob, setInvoiceJob] = useState<any | null>(null);
+  const [company, setCompany] = useState<any | null>(null);
 
   useEffect(() => { checkSession(); }, []);
 
@@ -47,12 +49,14 @@ export default function PortalInvoices() {
 
   const openInvoice = async (invoice: any) => {
     setSelectedInvoice(invoice);
-    const { data } = await supabase
-      .from('invoice_items')
-      .select('*')
-      .eq('invoice_id', invoice.id)
-      .order('created_at', { ascending: true });
-    setInvoiceItems(data || []);
+    const [itemsRes, jobRes, compRes] = await Promise.all([
+      supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id),
+      supabase.from('jobs').select('*').eq('id', invoice.job_id).single(),
+      supabase.from('company_settings').select('*').single(),
+    ]);
+    setInvoiceItems(itemsRes.data || []);
+    setInvoiceJob(jobRes.data || null);
+    setCompany(compRes.data || null);
   };
 
   const statusColor = (s: string) => {
@@ -131,73 +135,107 @@ export default function PortalInvoices() {
           </div>
         )}
 
-        {selectedInvoice && (
-          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
-            <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 sticky top-0 bg-slate-800">
-                <h3 className="text-white font-semibold">{selectedInvoice.invoice_number}</h3>
-                <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white transition">✕</button>
+        {selectedInvoice && invoiceJob && company && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-4">
+            <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
+              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0">
+                <h3 className="text-lg font-semibold text-slate-900">{selectedInvoice.invoice_number}</h3>
+                <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
               </div>
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <p className="text-slate-400 text-sm">Status</p>
-                    <p className="text-white font-semibold capitalize">{selectedInvoice.status}</p>
+              <div className="overflow-y-auto flex-1 p-8 space-y-6">
+                <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
+                  <div className="flex items-center gap-4">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">logo</span>
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                      {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Due Date</p>
-                    <p className="text-white font-semibold">{selectedInvoice.due_date ? new Date(selectedInvoice.due_date).toLocaleDateString() : '—'}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Total Amount</p>
-                    <p className="text-white font-semibold">${(selectedInvoice.total_amount || 0).toFixed(2)}</p>
-                  </div>
-                  <div>
-                    <p className="text-slate-400 text-sm">Amount Paid</p>
-                    <p className="text-green-400 font-semibold">${(selectedInvoice.amount_paid || 0).toFixed(2)}</p>
+                  <div className="text-right">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-1">INVOICE</h2>
+                    <p className="text-slate-600 font-medium text-sm">{selectedInvoice.invoice_number}</p>
                   </div>
                 </div>
 
-                {invoiceItems.length > 0 && (
+                <div className="grid grid-cols-2 gap-4 text-xs">
                   <div>
-                    <h4 className="text-white font-semibold mb-3">Line Items</h4>
-                    <div className="space-y-2">
-                      {invoiceItems.map((item: any) => (
-                        <div key={item.id} className="bg-slate-900 rounded p-3 flex justify-between">
-                          <div className="flex-1">
-                            <p className="text-white text-sm">{item.description}</p>
-                            <p className="text-slate-400 text-xs">Qty: {item.quantity}</p>
-                          </div>
-                          <p className="text-white font-semibold text-right">
-                            ${(item.total || 0).toFixed(2)}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
+                    <p className="text-slate-700 font-semibold">{company.company_name}</p>
+                    {company.address && <p className="text-slate-600">{company.address}</p>}
+                    {company.phone && <p className="text-slate-600">{company.phone}</p>}
                   </div>
-                )}
+                  <div>
+                    <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
+                    <p className="text-slate-700 font-semibold">{portalUser?.customer?.name}</p>
+                    {portalUser?.customer?.company_name && <p className="text-slate-600">{portalUser.customer.company_name}</p>}
+                    {portalUser?.customer?.phone && <p className="text-slate-600">{portalUser.customer.phone}</p>}
+                  </div>
+                </div>
 
-                <div className="border-t border-slate-700 pt-4">
-                  <div className="flex justify-between mb-2">
-                    <p className="text-slate-400">Subtotal</p>
-                    <p className="text-white">${(selectedInvoice.subtotal || 0).toFixed(2)}</p>
-                  </div>
-                  {selectedInvoice.tax_amount > 0 && (
-                    <div className="flex justify-between mb-2">
-                      <p className="text-slate-400">Tax</p>
-                      <p className="text-white">${(selectedInvoice.tax_amount || 0).toFixed(2)}</p>
+                <div className="bg-slate-50 rounded p-3 border border-slate-200 text-xs space-y-1">
+                  <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{invoiceJob.title}</span></div>
+                  <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{new Date(selectedInvoice.due_date).toLocaleDateString()}</span></div>
+                </div>
+
+                <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="text-left px-2 py-2 text-slate-600 font-semibold">Description</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Qty</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Unit Price</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {invoiceItems.length === 0 ? (
+                      <tr><td colSpan={4} className="px-2 py-3 text-center text-slate-400">No line items</td></tr>
+                    ) : invoiceItems.map((item, idx) => (
+                      <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        <td className="px-2 py-2 text-slate-700">{item.description}</td>
+                        <td className="text-right px-2 py-2 text-slate-700">{item.quantity}</td>
+                        <td className="text-right px-2 py-2 text-slate-700">${item.unit_price?.toFixed(2) || '0.00'}</td>
+                        <td className="text-right px-2 py-2 font-medium text-slate-900">${(item.total || 0).toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex justify-end text-xs space-y-1">
+                  <div className="w-40">
+                    <div className="flex justify-between text-slate-600 pb-1">
+                      <span>Subtotal:</span>
+                      <span>${(selectedInvoice.subtotal || 0).toFixed(2)}</span>
                     </div>
+                    <div className="flex justify-between text-slate-600 pb-2">
+                      <span>Tax:</span>
+                      <span>${(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2">
+                      <span>Total:</span>
+                      <span>${(selectedInvoice.total_amount || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
+                  <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
+                  <p className="text-slate-600 mb-2">Status: <span className="font-medium capitalize">{selectedInvoice.status}</span></p>
+                  {selectedInvoice.amount_paid > 0 && (
+                    <p className="text-slate-600">Amount Paid: <span className="font-medium">${selectedInvoice.amount_paid.toFixed(2)}</span></p>
                   )}
-                  <div className="flex justify-between pt-2 border-t border-slate-700">
-                    <p className="text-white font-semibold">Total</p>
-                    <p className="text-white font-bold text-lg">${(selectedInvoice.total_amount || 0).toFixed(2)}</p>
-                  </div>
-                </div>
-
-                <div className="flex gap-3">
-                  <button onClick={() => setSelectedInvoice(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">
-                    Close
-                  </button>
+                  {company.bsb || company.account_number ? (
+                    <div className="bg-white border border-slate-200 rounded p-2 text-slate-700 mt-2">
+                      <p className="font-semibold mb-1">Bank Transfer</p>
+                      {company.bsb && <p><span className="text-slate-500">BSB:</span> {company.bsb}</p>}
+                      {company.account_number && <p><span className="text-slate-500">Account:</span> {company.account_number}</p>}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>
