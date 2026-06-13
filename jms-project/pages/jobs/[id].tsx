@@ -744,7 +744,7 @@ export default function JobDetail() {
                     <div className="mt-4 space-y-2">
                       <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide">Saved Invoices</p>
                       {invoices.map((inv: any) => (
-                        <Link key={inv.id} href={`/invoices`}
+                        <Link key={inv.id} href={`/invoices/edit/${inv.id}`}
                           className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
                           <div>
                             <p className="text-white text-sm font-medium">{inv.invoice_number}</p>
