@@ -243,7 +243,7 @@ export default function EditInvoice() {
           </div>
 
           {/* Totals */}
-          <div className="flex justify-end mb-8 space-y-2 w-64">
+          <div className="flex flex-col justify-end mb-8 space-y-2 w-64 ml-auto">
             <div className="flex justify-between text-slate-400 text-sm">
               <span>Subtotal:</span>
               <span>${subtotal.toFixed(2)}</span>
