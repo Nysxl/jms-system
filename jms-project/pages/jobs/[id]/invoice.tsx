@@ -204,19 +204,28 @@ export default function InvoicePage() {
 
   const handleEmailInvoice = async () => {
     if (!customer?.email) {
-      alert('customer has no email address')
+      alert('Customer has no email address')
       return
     }
     setIsEmailing(true)
     try {
-      const { error } = await supabase.functions.invoke('email-invoice', {
-        body: { jobId: id, invoiceNumber, email: customer.email }
+      // First, save the invoice if it's not saved yet
+      // Then send via Resend API
+      const res = await fetch('/api/email/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: router.query.id,
+          recipientEmail: customer.email,
+          message: 'Please see attached invoice. Thank you for your business.'
+        })
       })
-      if (error) throw error
-      alert('invoice sent successfully')
-    } catch (err) {
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to send email')
+      alert('Invoice sent successfully to ' + customer.email)
+    } catch (err: any) {
       console.error(err)
-      alert('failed to send email')
+      alert('Failed to send email: ' + (err.message || 'Unknown error'))
     } finally {
       setIsEmailing(false)
     }

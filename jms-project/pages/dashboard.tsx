@@ -4,18 +4,23 @@ import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { JobCard } from '@/components/JobCard';
 import { supabase } from '@/lib/supabase';
-import { Job, Customer } from '@/lib/types';
+import { Job, Customer, Invoice } from '@/lib/types';
 
 export default function Dashboard() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalJobs: 0,
     activeJobs: 0,
     completedJobs: 0,
     pendingJobs: 0,
+    totalRevenue: 0,
+    paidRevenue: 0,
+    outstandingRevenue: 0,
+    overduInvoices: 0,
   });
 
   useEffect(() => {
@@ -27,21 +32,33 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [jobsRes, custRes] = await Promise.all([
+    const [jobsRes, custRes, invRes] = await Promise.all([
       supabase.from('jobs').select('*').order('created_at', { ascending: false }).limit(6),
       supabase.from('customers').select('*'),
+      supabase.from('invoices').select('*'),
     ]);
 
     const jobsList = jobsRes.data || [];
     const custList = custRes.data || [];
+    const invList = invRes.data || [];
 
     setJobs(jobsList);
     setCustomers(custList);
+    setInvoices(invList);
+
+    const totalRev = invList.reduce((s, i) => s + (i.total_amount || 0), 0);
+    const paidRev = invList.reduce((s, i) => s + (i.amount_paid || 0), 0);
+    const overdueCount = invList.filter(i => i.status !== 'paid' && i.due_date && new Date(i.due_date) < new Date()).length;
+
     setStats({
       totalJobs: jobsList.length,
       activeJobs: jobsList.filter(j => j.status === 'in-progress').length,
       completedJobs: jobsList.filter(j => j.status === 'completed').length,
       pendingJobs: jobsList.filter(j => j.status === 'pending').length,
+      totalRevenue: totalRev,
+      paidRevenue: paidRev,
+      outstandingRevenue: totalRev - paidRev,
+      overduInvoices: overdueCount,
     });
 
     // Get total count separately since we limited to 6
@@ -81,6 +98,26 @@ export default function Dashboard() {
           <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
             <p className="text-slate-400 text-sm">Completed</p>
             <p className="text-3xl font-bold text-green-400 mt-2">{stats.completedJobs}</p>
+          </div>
+        </div>
+
+        {/* Revenue KPIs */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+          <div className="bg-gradient-to-br from-purple-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
+            <p className="text-slate-400 text-sm">Total Revenue</p>
+            <p className="text-2xl font-bold text-purple-300 mt-2">${stats.totalRevenue.toFixed(2)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-green-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
+            <p className="text-slate-400 text-sm">Paid</p>
+            <p className="text-2xl font-bold text-green-300 mt-2">${stats.paidRevenue.toFixed(2)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-orange-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
+            <p className="text-slate-400 text-sm">Outstanding</p>
+            <p className="text-2xl font-bold text-orange-300 mt-2">${stats.outstandingRevenue.toFixed(2)}</p>
+          </div>
+          <div className="bg-gradient-to-br from-red-900/50 to-slate-900 rounded-xl border border-slate-700 p-6">
+            <p className="text-slate-400 text-sm">Overdue</p>
+            <p className="text-2xl font-bold text-red-300 mt-2">{stats.overduInvoices}</p>
           </div>
         </div>
 

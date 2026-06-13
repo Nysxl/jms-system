@@ -67,6 +67,7 @@ export interface JobNote {
   display_timestamp?: string; // overridable; falls back to created_at
   author_type: 'admin' | 'portal_user';
   portal_user_id?: string;
+  is_internal: boolean; // true = hidden from portal users
   created_at: string;
   updated_at: string;
 }
@@ -148,6 +149,9 @@ export interface Invoice {
   payment_terms?: string;
   due_date?: string;
   paid_date?: string;
+  payment_method?: string; // cash, card, bank_transfer, cheque, etc
+  amount_paid?: number; // support partial payments
+  payment_notes?: string;
   notes?: string;
   items?: InvoiceItem[];
   created_at: string;
