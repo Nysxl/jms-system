@@ -33,11 +33,33 @@ export default function NewJob() {
     });
   }, [router]);
 
+  const [billingSearch, setBillingSearch] = useState('');
+
   const selectedCustomer = customers.find(c => c.id === form.customer_id);
   const isSubContact = selectedCustomer?.customer_type === 'sub_contact';
+
+  // Only show relevant billing options based on selected customer
+  const billingOptions = (() => {
+    if (!selectedCustomer) return customers.filter(c => c.customer_type !== 'sub_contact');
+    if (isSubContact) {
+      // For sub-contacts: only show the contractor and direct clients
+      return customers.filter(c =>
+        c.id === selectedCustomer.contractor_id ||
+        (c.customer_type === 'direct' && c.id !== selectedCustomer.id)
+      );
+    }
+    // For direct contacts: only show direct clients (not sub-contacts)
+    return customers.filter(c => c.customer_type !== 'sub_contact' && c.id !== selectedCustomer.id);
+  })().filter(c =>
+    billingSearch === '' ||
+    c.name.toLowerCase().includes(billingSearch.toLowerCase()) ||
+    (c.company_name || '').toLowerCase().includes(billingSearch.toLowerCase())
+  );
+
   // Auto-set billing to contractor when sub_contact is selected
   const handleCustomerChange = (id: string) => {
     const c = customers.find(x => x.id === id);
+    setBillingSearch('');
     setForm(prev => ({
       ...prev,
       customer_id: id,
@@ -125,19 +147,27 @@ export default function NewJob() {
               )}
             </div>
 
-            {/* Billing override — shown always but pre-filled for sub_contacts */}
+            {/* Billing override */}
             <div>
               <label className="block text-slate-300 text-sm font-medium mb-1">
                 Bill To
                 {isSubContact && <span className="text-slate-500 text-xs font-normal ml-2">(defaults to contractor)</span>}
               </label>
+              <input
+                type="text"
+                value={billingSearch}
+                onChange={e => setBillingSearch(e.target.value)}
+                placeholder="Search billing contact..."
+                className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition mb-1"
+              />
               <select
                 value={form.billing_customer_id}
                 onChange={e => setForm({ ...form, billing_customer_id: e.target.value })}
                 className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                size={Math.min(billingOptions.length + 1, 5)}
               >
                 <option value="">Same as site contact</option>
-                {customers.filter(c => c.customer_type !== 'sub_contact').map(c => (
+                {billingOptions.map(c => (
                   <option key={c.id} value={c.id}>{c.company_name || c.name}</option>
                 ))}
               </select>
