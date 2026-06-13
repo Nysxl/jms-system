@@ -26,20 +26,16 @@ export default function PortalSchedule() {
     loadJobs(pu.customer_id);
   };
 
-  const loadJobs = async (_customerId: string) => {
+  const loadJobs = async (customerId: string) => {
     setIsLoading(true);
-    try {
-      const stored = localStorage.getItem('portal_session');
-      const pu = stored ? JSON.parse(stored) : null;
-      if (!pu) return;
-      const res = await fetch(`/api/portal/get-data?portalUserId=${pu.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setJobs((data.jobs || []).filter((j: any) => j.scheduled_date));
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    const { data: subs } = await supabase
+      .from('customers').select('id').eq('contractor_id', customerId).eq('customer_type', 'sub_contact');
+    const customerIds = [customerId, ...(subs?.map((s: any) => s.id) || [])];
+    const { data } = await supabase
+      .from('jobs').select('*').in('customer_id', customerIds)
+      .not('scheduled_date', 'is', null).order('scheduled_date', { ascending: true });
+    if (data) setJobs(data);
+    setIsLoading(false);
   };
 
   const daysInMonth = eachDayOfInterval({

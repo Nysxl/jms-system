@@ -22,20 +22,18 @@ export default function PortalInvoices() {
     loadInvoices(pu.customer_id);
   };
 
-  const loadInvoices = async (_customerId: string) => {
+  const loadInvoices = async (customerId: string) => {
     setIsLoading(true);
-    try {
-      const stored = localStorage.getItem('portal_session');
-      const pu = stored ? JSON.parse(stored) : null;
-      if (!pu) return;
-      const res = await fetch(`/api/portal/get-invoices?portalUserId=${pu.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setInvoices(data.invoices || []);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    const { data: subs } = await supabase
+      .from('customers').select('id').eq('contractor_id', customerId).eq('customer_type', 'sub_contact');
+    const customerIds = [customerId, ...(subs?.map((s: any) => s.id) || [])];
+    const { data } = await supabase
+      .from('invoices')
+      .select('*, job:jobs(title)')
+      .in('customer_id', customerIds)
+      .order('created_at', { ascending: false });
+    if (data) setInvoices(data);
+    setIsLoading(false);
   };
 
   const statusColor = (s: string) => {

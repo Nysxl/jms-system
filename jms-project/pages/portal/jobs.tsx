@@ -52,22 +52,26 @@ export default function PortalJobs() {
     }
   };
 
-  const loadData = async (_customerId: string) => {
+  const loadData = async (customerId: string) => {
     setIsLoading(true);
     try {
-      const stored = localStorage.getItem('portal_session');
-      const pu = stored ? JSON.parse(stored) : null;
-      if (!pu) return;
+      const { data: subs } = await supabase
+        .from('customers')
+        .select('id, name, company_name')
+        .eq('contractor_id', customerId)
+        .eq('customer_type', 'sub_contact');
 
-      const res = await fetch(`/api/portal/get-data?portalUserId=${pu.id}`);
-      const data = await res.json();
-      if (res.ok) {
-        setSubContacts(data.subContacts || []);
-        setJobs(data.jobs || []);
-      } else {
-        console.error('[get-data error]', data);
-        alert('Failed to load jobs: ' + JSON.stringify(data));
-      }
+      setSubContacts(subs || []);
+
+      const customerIds = [customerId, ...(subs?.map((s: any) => s.id) || [])];
+
+      const { data: jobs } = await supabase
+        .from('jobs')
+        .select('*')
+        .in('customer_id', customerIds)
+        .order('created_at', { ascending: false });
+
+      setJobs((jobs as Job[]) || []);
     } finally {
       setIsLoading(false);
     }

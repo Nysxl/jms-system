@@ -32,20 +32,15 @@ export default function PortalClientDetail() {
 
   const loadData = async () => {
     setIsLoading(true);
-    try {
-      const stored = localStorage.getItem('portal_session');
-      const pu = stored ? JSON.parse(stored) : null;
-      if (!pu) return;
-      const res = await fetch(`/api/portal/get-client?portalUserId=${pu.id}&clientId=${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setClient(data.client);
-        setJobs(data.jobs || []);
-        setInvoices(data.invoices || []);
-      }
-    } finally {
-      setIsLoading(false);
-    }
+    const [{ data: clientData }, { data: jobsData }, { data: invoicesData }] = await Promise.all([
+      supabase.from('customers').select('*').eq('id', id).single(),
+      supabase.from('jobs').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+      supabase.from('invoices').select('*').eq('customer_id', id).order('created_at', { ascending: false }),
+    ]);
+    if (clientData) setClient(clientData);
+    if (jobsData) setJobs(jobsData);
+    if (invoicesData) setInvoices(invoicesData);
+    setIsLoading(false);
   };
 
   const statusColor = (s: string) => {
