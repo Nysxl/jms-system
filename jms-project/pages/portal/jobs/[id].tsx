@@ -255,7 +255,7 @@ export default function PortalJobDetail() {
   if (!job) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Job not found</p></div>;
 
   const customerNotes = notes.filter(n => n.author_type === 'portal_user');
-  const adminNotes = notes.filter(n => n.author_type === 'admin');
+  const adminNotes = notes.filter(n => n.author_type === 'admin' && !(n.is_internal as any));
   const customerImages = images.filter(i => i.author_type === 'portal_user');
   const adminImages = images.filter(i => i.author_type === 'admin');
 
@@ -312,6 +312,18 @@ export default function PortalJobDetail() {
             </div>
           )}
 
+          {/* Admin Photos */}
+          {adminImages.length > 0 && (
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <h4 className="text-slate-300 font-medium text-sm mb-3">📸 Shared Photos</h4>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                {adminImages.filter(img => !(img.is_internal as any)).map(img => (
+                  <img key={img.id} src={img.image_url} alt={img.file_name} className="rounded-lg w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Customer Photos */}
           <div className="mt-6 pt-6 border-t border-slate-700">
             <h4 className="text-slate-300 font-medium text-sm mb-3">Your Photos</h4>
@@ -328,16 +340,36 @@ export default function PortalJobDetail() {
             )}
           </div>
 
-          {/* Attachments */}
+          {/* Admin Attachments */}
+          {attachments.filter((att: any) => att.author_type === 'admin').length > 0 && (
+            <div className="mt-6 pt-6 border-t border-slate-700">
+              <h4 className="text-slate-300 font-medium text-sm mb-3">📎 Shared Documents</h4>
+              <div className="space-y-2">
+                {attachments.filter((att: any) => att.author_type === 'admin' && !(att.is_internal as any)).map(att => (
+                  <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
+                    <div className="flex items-center justify-between">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-white font-medium text-sm truncate">{att.file_name}</p>
+                        <p className="text-slate-400 text-xs">{(att.file_size / 1024).toFixed(1)} KB</p>
+                      </div>
+                      <span className="text-slate-400 ml-2">↓</span>
+                    </div>
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Customer Attachments */}
           <div className="mt-6 pt-6 border-t border-slate-700">
             <h4 className="text-slate-300 font-medium text-sm mb-3">Documents & Files</h4>
             <button onClick={() => attachRef.current?.click()} className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-4 py-1.5 rounded-lg transition mb-3">+ Add Documents</button>
             <input ref={attachRef} type="file" multiple onChange={handleAttachmentUpload} className="hidden" />
-            {attachments.length === 0 ? (
+            {attachments.filter((att: any) => att.author_type === 'portal_user').length === 0 ? (
               <p className="text-slate-500 text-sm">No documents yet</p>
             ) : (
               <div className="space-y-2">
-                {attachments.map(att => (
+                {attachments.filter((att: any) => att.author_type === 'portal_user').map(att => (
                   <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">

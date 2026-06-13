@@ -884,6 +884,10 @@ export default function JobDetail() {
                       {images.filter(img => img.author_type === 'admin').map(img => (
                         <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
                           <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                          <button onClick={async () => {
+                            await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
+                            loadImages();
+                          }} className={`absolute top-1 left-1 rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition ${(img.is_internal as any) ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>{(img.is_internal as any) ? '🔒' : '👁'}</button>
                           <button onClick={() => handleDeletePhoto(img)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
                           <div className="px-2 py-1 bg-slate-800/90">
                             {editingImageTimestamp === img.id ? (
@@ -963,6 +967,13 @@ export default function JobDetail() {
                           )}
                           <a href={att.file_url} download={att.file_name}
                             className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">↓</a>
+                          <button onClick={async () => {
+                            await supabase.from('job_attachments').update({ is_internal: !(att.is_internal as any) }).eq('id', att.id);
+                            loadAttachments();
+                          }}
+                            className={`text-xs px-2 py-1.5 rounded-lg transition ${(att.is_internal as any) ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
+                            {(att.is_internal as any) ? '🔒 Internal' : '👁 Visible'}
+                          </button>
                           <button onClick={() => handleDeleteAttachment(att)}
                             className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100">✕</button>
                         </div>
