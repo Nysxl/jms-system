@@ -24,29 +24,26 @@ export default function PortalJobs() {
 
   const checkSession = async () => {
     try {
+      const stored = localStorage.getItem('portal_session');
+      if (!stored) {
+        router.push('/portal/login');
+        return;
+      }
+
+      const pu = JSON.parse(stored);
+      setPortalUser(pu);
+
+      // Ensure Supabase auth session is active for RLS queries
       const { data: { session } } = await supabase.auth.getSession();
-      console.log('Session:', session?.user?.id);
       if (!session) {
         router.push('/portal/login');
         return;
       }
 
-      // Get portal user
-      const { data: pu, error: puError } = await supabase
-        .from('portal_users')
-        .select('*')
-        .eq('id', session.user.id)
-        .single();
-
-      console.log('Portal user:', pu, 'Error:', puError);
-      if (pu) {
-        setPortalUser(pu);
-        loadJobs(pu.customer_id);
-      } else {
-        console.error('Portal user not found for session:', session.user.id);
-      }
+      loadJobs(pu.customer_id);
     } catch (err) {
       console.error('Session check failed:', err);
+      router.push('/portal/login');
     }
   };
 

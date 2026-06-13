@@ -29,19 +29,18 @@ export default function PortalJobDetail() {
   }, [id, portalUser]);
 
   const checkSession = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
+    const stored = localStorage.getItem('portal_session');
+    if (!stored) {
       router.push('/portal/login');
       return;
     }
-
-    const { data: pu } = await supabase
-      .from('portal_users')
-      .select('*')
-      .eq('id', session.user.id)
-      .single();
-
+    const pu = JSON.parse(stored);
     if (pu) setPortalUser(pu);
+
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      router.push('/portal/login');
+    }
   };
 
   const loadJobData = async () => {
