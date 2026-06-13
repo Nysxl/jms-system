@@ -104,28 +104,16 @@ export default function PortalManagement() {
     if (!editForm.email.trim() || !editForm.password.trim()) { setEditError('Email and password are required.'); return; }
     setIsSavingEdit(true);
     try {
-      // Create or update Supabase Auth user
-      try {
-        // Try to create auth user
-        const { data: _signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+      // Create or update Supabase Auth user via API
+      await fetch('/api/portal/create-auth-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           email: editForm.email.trim().toLowerCase(),
           password: editForm.password,
-          email_confirm: true,
-        });
-
-        if (signUpError && !signUpError.message.includes('already exists')) {
-          throw signUpError;
-        }
-
-        // If user exists, update their password
-        if (signUpError?.message.includes('already exists') && selectedUser?.id) {
-          await supabase.auth.admin.updateUserById(selectedUser.id, {
-            password: editForm.password,
-          });
-        }
-      } catch (authError: any) {
-        console.error('Auth user creation/update failed:', authError);
-      }
+          userId: selectedUser!.id,
+        }),
+      });
 
       // Update portal user
       const { error } = await supabase.from('portal_users').update({
