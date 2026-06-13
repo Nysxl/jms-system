@@ -1,8 +1,16 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/router';
+import { supabase } from '@/lib/supabase';
 
 export const Header: React.FC<{ username?: string }> = ({ username }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    router.push('/login');
+  };
 
   return (
     <header className="bg-slate-900 border-b border-slate-800 shadow-lg">
@@ -45,12 +53,12 @@ export const Header: React.FC<{ username?: string }> = ({ username }) => {
         </nav>
 
         <div className="flex items-center gap-4">
-          {username && <span className="text-slate-300">{username}</span>}
+          {username && <span className="text-slate-300 text-sm">{username}</span>}
           <button
-            onClick={() => setMenuOpen(!menuOpen)}
-            className="text-slate-300 hover:text-white"
+            onClick={handleSignOut}
+            className="text-slate-400 hover:text-white text-sm px-3 py-1.5 rounded-lg border border-slate-700 hover:border-slate-500 transition"
           >
-            ⚙️
+            Sign Out
           </button>
         </div>
       </div>
