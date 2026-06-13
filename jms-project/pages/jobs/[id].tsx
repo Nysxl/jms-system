@@ -72,6 +72,7 @@ export default function JobDetail() {
 
   const [job, setJob] = useState<Job | null>(null);
   const [customer, setCustomer] = useState<Customer | null>(null);
+  const [contractor, setContractor] = useState<Customer | null>(null);
   const [notes, setNotes] = useState<JobNote[]>([]);
   const [images, setImages] = useState<JobImage[]>([]);
   const [reports, setReports] = useState<ServiceReport[]>([]);
@@ -164,7 +165,13 @@ export default function JobDetail() {
     if (data) {
       setJob(data);
       const { data: cust } = await supabase.from('customers').select('*').eq('id', data.customer_id).single();
-      if (cust) setCustomer(cust);
+      if (cust) {
+        setCustomer(cust);
+        if (cust.customer_type === 'sub_contact' && cust.contractor_id) {
+          const { data: cont } = await supabase.from('customers').select('*').eq('id', cust.contractor_id).single();
+          if (cont) setContractor(cont);
+        }
+      }
     }
   };
 
@@ -1029,14 +1036,37 @@ export default function JobDetail() {
 
             {customer && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-                <h3 className="text-white font-semibold mb-3">Customer</h3>
-                <div className="space-y-1 text-sm">
-                  <p className="text-white font-medium">{customer.name}</p>
-                  {customer.company_name && <p className="text-slate-400">{customer.company_name}</p>}
-                  <p className="text-slate-400">✉️ {customer.email}</p>
-                  {customer.phone && <p className="text-slate-400">📞 {customer.phone}</p>}
-                  {customer.address && <p className="text-slate-400">📍 {customer.address}</p>}
-                  {customer.city && <p className="text-slate-400">{[customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ')}</p>}
+                <h3 className="text-white font-semibold mb-3">
+                  {customer.customer_type === 'sub_contact' ? 'Billing' : 'Customer'}
+                </h3>
+
+                {/* Sub-contact: show contractor (main biller) first */}
+                {customer.customer_type === 'sub_contact' && contractor && (
+                  <div className="mb-4 pb-4 border-b border-slate-700">
+                    <p className="text-slate-500 text-xs uppercase tracking-wide mb-2">Contractor</p>
+                    <div className="space-y-1 text-sm">
+                      <p className="text-white font-medium">{contractor.name}</p>
+                      {contractor.company_name && <p className="text-slate-400">{contractor.company_name}</p>}
+                      {contractor.email && <p className="text-slate-400">✉️ {contractor.email}</p>}
+                      {contractor.phone && <p className="text-slate-400">📞 {contractor.phone}</p>}
+                      {contractor.address && <p className="text-slate-400">📍 {contractor.address}</p>}
+                    </div>
+                  </div>
+                )}
+
+                {/* The direct customer (or sub-contact) */}
+                <div>
+                  {customer.customer_type === 'sub_contact' && (
+                    <p className="text-slate-500 text-xs uppercase tracking-wide mb-2">Sub-Contact</p>
+                  )}
+                  <div className="space-y-1 text-sm">
+                    <p className="text-white font-medium">{customer.name}</p>
+                    {customer.company_name && <p className="text-slate-400">{customer.company_name}</p>}
+                    {customer.email && <p className="text-slate-400">✉️ {customer.email}</p>}
+                    {customer.phone && <p className="text-slate-400">📞 {customer.phone}</p>}
+                    {customer.address && <p className="text-slate-400">📍 {customer.address}</p>}
+                    {customer.city && <p className="text-slate-400">{[customer.city, customer.state, customer.zip_code].filter(Boolean).join(', ')}</p>}
+                  </div>
                 </div>
               </div>
             )}
