@@ -1,19 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { createClient } from '@supabase/supabase-js';
+import { getAdminClient } from '@/lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const supabaseAdmin = createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
-
+  const supabaseAdmin = getAdminClient();
   const { email, password } = req.body;
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
   try {
-    // Try to create auth user
     const cleanEmail = email.trim().toLowerCase();
 
     try {
@@ -25,7 +20,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     } catch (error: any) {
       // If user already exists, update their password
       if (error.message?.includes('already exists')) {
-        // Find the user and update password
         const { data: users } = await supabaseAdmin.auth.admin.listUsers();
         const existingUser = users?.users?.find((u: any) => u.email === cleanEmail);
 
