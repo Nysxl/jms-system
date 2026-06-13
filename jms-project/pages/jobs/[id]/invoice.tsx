@@ -278,7 +278,7 @@ export default function InvoicePage() {
             description: li.description,
             quantity: li.quantity,
             unit_price: li.unit_price,
-            amount: li.amount,
+            total: li.amount,
           }))
         )
         // Update quantity_invoiced for each line item
