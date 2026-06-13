@@ -3,6 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { supabase } from '@/lib/supabase';
+import { Job, Customer } from '@/lib/types';
 
 interface Invoice {
   id: string;
@@ -30,11 +31,26 @@ interface InvoiceItem {
   total: number;
 }
 
+interface CompanySettings {
+  company_name: string;
+  owner_name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  state: string;
+  zip_code: string;
+  logo_url: string;
+}
+
 export default function EditInvoice() {
   const router = useRouter();
   const { id } = router.query as { id: string };
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const [items, setItems] = useState<InvoiceItem[]>([]);
+  const [job, setJob] = useState<Job | null>(null);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [company, setCompany] = useState<CompanySettings | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -47,16 +63,30 @@ export default function EditInvoice() {
 
   const loadInvoice = async () => {
     setIsLoading(true);
-    const [invRes, itemsRes] = await Promise.all([
-      supabase.from('invoices').select('*').eq('id', id).single(),
-      supabase.from('invoice_items').select('*').eq('invoice_id', id),
-    ]);
-    if (invRes.data) {
-      setInvoice(invRes.data);
-      setEditForm({ status: invRes.data.status, due_date: invRes.data.due_date || '', notes: invRes.data.notes || '' });
+    try {
+      const [invRes, itemsRes] = await Promise.all([
+        supabase.from('invoices').select('*').eq('id', id).single(),
+        supabase.from('invoice_items').select('*').eq('invoice_id', id),
+      ]);
+
+      if (invRes.data) {
+        setInvoice(invRes.data);
+        setEditForm({ status: invRes.data.status, due_date: invRes.data.due_date || '', notes: invRes.data.notes || '' });
+
+        // Load job and customer
+        const [jobRes, custRes, compRes] = await Promise.all([
+          supabase.from('jobs').select('*').eq('id', invRes.data.job_id).single(),
+          supabase.from('customers').select('*').eq('id', invRes.data.customer_id).single(),
+          supabase.from('company_settings').select('*').single(),
+        ]);
+        if (jobRes.data) setJob(jobRes.data);
+        if (custRes.data) setCustomer(custRes.data);
+        if (compRes.data) setCompany(compRes.data);
+      }
+      if (itemsRes.data) setItems(itemsRes.data);
+    } finally {
+      setIsLoading(false);
     }
-    if (itemsRes.data) setItems(itemsRes.data);
-    setIsLoading(false);
   };
 
   const handleItemChange = (idx: number, field: string, value: any) => {
@@ -170,14 +200,17 @@ export default function EditInvoice() {
   const subtotal = items.reduce((s, i) => s + i.total, 0);
   const taxAmount = invoice.tax_amount || 0;
   const total = subtotal + taxAmount;
+  const formatDate = (d?: string) => d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
 
   return (
     <div className="min-h-screen bg-slate-950">
       <Header />
-      <main className="max-w-6xl mx-auto px-6 py-8">
+      <main className="mx-auto px-6 py-8">
         <Link href={`/jobs/${invoice.job_id}`} className="text-slate-400 hover:text-slate-300 text-sm mb-4 inline-block">← Back to Job</Link>
 
-        <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Edit Form */}
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
           <h1 className="text-3xl font-bold text-white mb-2">{invoice.invoice_number}</h1>
           <p className="text-slate-400 text-sm mb-6">Issued {new Date(invoice.issue_date).toLocaleDateString()}</p>
 
@@ -286,6 +319,94 @@ export default function EditInvoice() {
               🗑️ Delete Invoice
             </button>
           </div>
+          </div>
+
+          {/* Print Preview */}
+          {job && customer && company && (
+            <div className="bg-white rounded-xl overflow-hidden shadow-lg">
+              <div className="p-8 space-y-6 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
+                  <div className="flex items-center gap-4">
+                    {company.logo_url ? (
+                      <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
+                    ) : (
+                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                        <span className="text-white font-bold text-sm">logo</span>
+                      </div>
+                    )}
+                    <div>
+                      <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                      {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <h2 className="text-2xl font-bold text-slate-900 mb-1">INVOICE</h2>
+                    <p className="text-slate-600 font-medium text-sm">{invoice.invoice_number}</p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 text-xs">
+                  <div>
+                    <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
+                    <p className="text-slate-700 font-semibold">{company.company_name}</p>
+                    {company.address && <p className="text-slate-600">{company.address}</p>}
+                    {company.phone && <p className="text-slate-600">{company.phone}</p>}
+                  </div>
+                  <div>
+                    <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
+                    <p className="text-slate-700 font-semibold">{customer.name}</p>
+                    {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
+                    {customer.phone && <p className="text-slate-600">{customer.phone}</p>}
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded p-3 border border-slate-200 text-xs space-y-1">
+                  <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{job.title}</span></div>
+                  <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{formatDate(invoice.due_date)}</span></div>
+                </div>
+
+                <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
+                  <thead className="bg-slate-100">
+                    <tr>
+                      <th className="text-left px-2 py-2 text-slate-600 font-semibold">Description</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Qty</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Unit Price</th>
+                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.length === 0 ? (
+                      <tr><td colSpan={4} className="px-2 py-3 text-center text-slate-400">No line items</td></tr>
+                    ) : items.map((item, idx) => (
+                      <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                        <td className="px-2 py-2 text-slate-700">{item.description}</td>
+                        <td className="text-right px-2 py-2 text-slate-700">{item.quantity}</td>
+                        <td className="text-right px-2 py-2 text-slate-700">${item.unit_price.toFixed(2)}</td>
+                        <td className="text-right px-2 py-2 font-medium text-slate-900">${item.total.toFixed(2)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+
+                <div className="flex justify-end text-xs space-y-1">
+                  <div className="w-40">
+                    <div className="flex justify-between text-slate-600 pb-1">
+                      <span>Subtotal:</span>
+                      <span>${subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between text-slate-600 pb-2">
+                      <span>Tax:</span>
+                      <span>${taxAmount.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2">
+                      <span>Total:</span>
+                      <span>${total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
 
