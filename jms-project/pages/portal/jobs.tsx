@@ -94,12 +94,13 @@ export default function PortalJobs() {
         }),
       });
 
+      const data = await res.json();
       if (res.ok) {
         setFormData({ title: '', description: '', scheduledDate: '', subContactId: '' });
         setShowCreateForm(false);
         loadData(portalUser.customer_id);
       } else {
-        alert('Failed to create job request');
+        alert('Failed to create job request: ' + (data.error || res.status));
       }
     } catch (err) {
       alert('Error creating job request');

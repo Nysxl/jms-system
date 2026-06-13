@@ -50,15 +50,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(500).json({ error: jobError.message });
     }
 
-    // Log activity
-    await supabase.from('portal_activity_log').insert({
+    // Log activity (non-critical — don't let this crash job creation)
+    supabase.from('portal_activity_log').insert({
       portal_user_id: portalUserId,
       user_id: portalUser.user_id,
       action_type: 'job_created',
       entity_type: 'job',
       entity_id: job.id,
       details: JSON.stringify({ title, scheduledDate }),
-    });
+    }).then(() => {}).catch(() => {});
 
     // Send email to admin (optional - gracefully handles missing Resend)
     if (process.env.RESEND_API_KEY) {
