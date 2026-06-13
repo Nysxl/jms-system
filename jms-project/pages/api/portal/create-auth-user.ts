@@ -1,39 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { getAdminClient } from '@/lib/supabase';
+import { createClient } from '@supabase/supabase-js';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const supabaseAdmin = getAdminClient();
-  const { email, password } = req.body;
-  if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
+  const { userId, password, authToken } = req.body;
+  if (!userId || !password) return res.status(400).json({ error: 'userId and password required' });
+
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return res.status(500).json({ error: 'Server configuration error.' });
 
   try {
-    const cleanEmail = email.trim().toLowerCase();
+    const supabase = createClient(url, anonKey);
 
-    try {
-      await supabaseAdmin.auth.admin.createUser({
-        email: cleanEmail,
-        password,
-        email_confirm: true,
-      });
-    } catch (error: any) {
-      // If user already exists, update their password
-      if (error.message?.includes('already exists')) {
-        const { data: users } = await supabaseAdmin.auth.admin.listUsers();
-        const existingUser = users?.users?.find((u: any) => u.email === cleanEmail);
-
-        if (existingUser) {
-          await supabaseAdmin.auth.admin.updateUserById(existingUser.id, { password });
-        }
-      } else {
-        throw error;
-      }
+    // Set the caller's auth session so RLS and function grants apply
+    if (authToken) {
+      await supabase.auth.setSession({ access_token: authToken, refresh_token: '' });
     }
 
-    return res.status(200).json({ success: true });
+    // Call SECURITY DEFINER function to hash and store password
+    const { data, error } = await supabase.rpc('set_portal_password', {
+      p_user_id: userId,
+      p_password: password,
+    });
+
+    if (error) {
+      console.error('set_portal_password error:', error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    return res.status(200).json({ success: true, updated: data });
   } catch (err: any) {
-    console.error('Auth user error:', err);
-    return res.status(500).json({ error: err.message || 'Failed to create auth user' });
+    console.error('Error setting portal password:', err);
+    return res.status(500).json({ error: err.message || 'Failed to set password' });
   }
 }

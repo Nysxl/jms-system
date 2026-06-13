@@ -104,25 +104,41 @@ export default function PortalManagement() {
     if (!editForm.email.trim() || !editForm.password.trim()) { setEditError('Email and password are required.'); return; }
     setIsSavingEdit(true);
     try {
-      // Create or update Supabase Auth user via API
+      // Get current session token to pass to API
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData.session?.access_token;
+
+      // First save portal user record (get the ID if new)
+      const { data: savedUser, error } = await supabase.from('portal_users').upsert({
+        id: selectedUser?.id,
+        email: editForm.email.trim().toLowerCase(),
+        customer_id: editForm.customer_id,
+        is_active: 1,
+        updated_at: new Date().toISOString(),
+      }).select().single();
+
+      if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
+
+      // Set hashed password via RPC-backed API
       await fetch('/api/portal/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          email: editForm.email.trim().toLowerCase(),
+          userId: savedUser.id,
           password: editForm.password,
-          userId: selectedUser!.id,
+          authToken,
         }),
       });
 
-      // Update portal user
-      const { error } = await supabase.from('portal_users').update({
+      // Update portal user email/metadata
+      const { error: updateError } = await supabase.from('portal_users').update({
         email: editForm.email.trim().toLowerCase(),
-        password_plain: editForm.password,
         updated_at: new Date().toISOString(),
-      }).eq('id', selectedUser!.id);
+      }).eq('id', savedUser.id);
 
-      if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
+      const error2 = updateError;
+
+      if (error2) { setEditError(error2.message); setIsSavingEdit(false); return; }
       setEditSuccess(true);
       setIsSavingEdit(false);
       loadData(userId);
@@ -149,12 +165,16 @@ export default function PortalManagement() {
     }
     setResettingPassword(true);
     try {
-      const res = await fetch('/api/portal/reset-password', {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const authToken = sessionData.session?.access_token;
+
+      const res = await fetch('/api/portal/create-auth-user', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          portalUserId: resetUser!.id,
-          newPassword: resetPassword,
+          userId: resetUser!.id,
+          password: resetPassword,
+          authToken,
         }),
       });
       const data = await res.json();
@@ -162,9 +182,11 @@ export default function PortalManagement() {
         setShowResetModal(false);
         loadData(userId);
         alert(`Password reset for ${resetUser!.email}`);
+      } else {
+        setResetError(data.error || 'Failed to reset password.');
       }
     } catch (err: any) {
-      setResetError(err.response?.data?.error || 'Failed to reset password.');
+      setResetError(err.message || 'Failed to reset password.');
     }
     setResettingPassword(false);
   };
