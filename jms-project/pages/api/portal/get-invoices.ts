@@ -32,12 +32,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     console.error('Invoices lookup error:', invError);
   }
 
-  console.log('Portal invoices query:', {
+  console.log('Portal invoices loaded:', {
     portalUserId,
-    portalUserCustomerId: portalUser.customer_id,
-    subContactCount: subs?.length,
-    allCustomerIds: customerIds,
-    foundInvoiceCount: invoices?.length || 0
+    customerIds,
+    invoiceCount: invoices?.length || 0
   });
 
   return res.status(200).json({
