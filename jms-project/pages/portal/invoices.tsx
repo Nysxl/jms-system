@@ -19,22 +19,13 @@ export default function PortalInvoices() {
     setPortalUser(pu);
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) { localStorage.removeItem('portal_session'); router.push('/portal/login'); return; }
-    loadInvoices(pu.customer_id);
+    loadInvoices(pu.id);
   };
 
-  const loadInvoices = async (customerId: string) => {
+  const loadInvoices = async (portalUserId: string) => {
     setIsLoading(true);
     try {
-      const { data: puRes } = await supabase
-        .from('portal_users').select('id').eq('customer_id', customerId).single();
-
-      if (!puRes) {
-        setInvoices([]);
-        setIsLoading(false);
-        return;
-      }
-
-      const res = await fetch(`/api/portal/get-invoices?portalUserId=${puRes.id}`);
+      const res = await fetch(`/api/portal/get-invoices?portalUserId=${portalUserId}`);
       const json = await res.json();
       if (json.invoices) setInvoices(json.invoices);
     } catch (err) {
