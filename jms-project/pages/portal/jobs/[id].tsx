@@ -71,6 +71,7 @@ export default function PortalJobDetail() {
         user_id: user.id,
         content: newNote,
         author_type: 'portal_user',
+        created_at: new Date().toISOString(),
       }).select().single();
 
       if (error) throw error;
@@ -113,6 +114,7 @@ export default function PortalJobDetail() {
             image_url: publicUrl,
             file_name: file.name,
             author_type: 'portal_user',
+            uploaded_at: new Date().toISOString(),
           }).select().single();
 
           if (imgError) throw imgError;
