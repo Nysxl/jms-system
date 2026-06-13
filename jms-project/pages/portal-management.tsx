@@ -131,7 +131,6 @@ export default function PortalManagement() {
     }
     setResettingPassword(true);
     try {
-      const { data } = await supabase.from('portal_users').select('user_id').eq('id', resetUser!.id).single();
       const res = await axios.post('/api/portal/reset-password', {
         portalUserId: resetUser!.id,
         newPassword: resetPassword,
