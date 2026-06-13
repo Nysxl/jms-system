@@ -201,6 +201,17 @@ export interface InventoryTransaction {
   created_at: string;
 }
 
+export interface Expense {
+  id: string;
+  user_id: string;
+  job_id: string;
+  description: string;
+  expense_type: 'materials' | 'labor' | 'subcontractor' | 'travel' | 'other';
+  amount: number;
+  created_at: string;
+  updated_at: string;
+}
+
 // Portal User Types
 export interface PortalUser {
   id: string;

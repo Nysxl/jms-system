@@ -99,6 +99,13 @@ export default function JobDetail() {
   const [previewAttachment, setPreviewAttachment] = useState<JobAttachment | null>(null);
   const attachRef = useRef<HTMLInputElement>(null);
 
+  // Expenses
+  const [expenses, setExpenses] = useState<any[]>([]);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [expenseForm, setExpenseForm] = useState({ description: '', expense_type: 'materials', amount: '' });
+  const [savingExpense, setSavingExpense] = useState(false);
+  const [expenseError, setExpenseError] = useState('');
+
   // Line items
   const [showLineItemModal, setShowLineItemModal] = useState(false);
   const [lineItemMode, setLineItemMode] = useState<'inventory' | 'writein'>('inventory');
@@ -130,7 +137,7 @@ export default function JobDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory()]);
+    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory(), loadExpenses()]);
     setIsLoading(false);
   };
 
@@ -171,6 +178,41 @@ export default function JobDetail() {
   const loadInventory = async () => {
     const { data } = await supabase.from('inventory').select('id, name, unit_price, unit_cost, sku').order('name', { ascending: true });
     if (data) setInventoryItems(data);
+  };
+
+  const loadExpenses = async () => {
+    const { data } = await supabase.from('expenses').select('*').eq('job_id', id).order('created_at', { ascending: false });
+    if (data) setExpenses(data);
+  };
+
+  const handleSaveExpense = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setExpenseError('');
+    if (!expenseForm.description.trim() || !expenseForm.amount) {
+      setExpenseError('Description and amount are required.');
+      return;
+    }
+    setSavingExpense(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('expenses').insert([{
+      user_id: user?.id,
+      job_id: id,
+      description: expenseForm.description,
+      expense_type: expenseForm.expense_type,
+      amount: parseFloat(expenseForm.amount),
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }]);
+    if (error) { setExpenseError(error.message); setSavingExpense(false); return; }
+    setSavingExpense(false);
+    setShowExpenseModal(false);
+    setExpenseForm({ description: '', expense_type: 'materials', amount: '' });
+    loadExpenses();
+  };
+
+  const handleDeleteExpense = async (expenseId: string) => {
+    await supabase.from('expenses').delete().eq('id', expenseId);
+    loadExpenses();
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -755,6 +797,40 @@ export default function JobDetail() {
               )}
             </div>
 
+            {/* Expenses */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold">Expenses</h3>
+                <button onClick={() => setShowExpenseModal(true)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition">+ Add</button>
+              </div>
+              {expenses.length === 0 ? (
+                <p className="text-slate-500 text-sm text-center py-4">No expenses recorded.</p>
+              ) : (
+                <div className="space-y-2 mb-4">
+                  {expenses.map(exp => (
+                    <div key={exp.id} className="flex items-center justify-between bg-slate-900 rounded p-3">
+                      <div>
+                        <p className="text-white text-sm font-medium">{exp.description}</p>
+                        <p className="text-slate-400 text-xs">{exp.expense_type}</p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <span className="text-white font-medium text-sm">${exp.amount.toFixed(2)}</span>
+                        <button onClick={() => handleDeleteExpense(exp.id)}
+                          className="text-slate-500 hover:text-red-400 text-xs transition">✕</button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-slate-700 pt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Total Expenses:</span>
+                  <span className="text-orange-400 font-semibold">${expenses.reduce((s, e) => s + e.amount, 0).toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+
             {customer && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
                 <h3 className="text-white font-semibold mb-3">Customer</h3>
@@ -942,6 +1018,48 @@ export default function JobDetail() {
             </div>
           </div>
           <iframe src={previewAttachment.file_url} className="flex-1 w-full" title={previewAttachment.file_name} />
+        </div>
+      )}
+
+      {/* Expense Modal */}
+      {showExpenseModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold">Add Expense</h3>
+              <button onClick={() => setShowExpenseModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+            <form onSubmit={handleSaveExpense} className="p-6 space-y-4">
+              {expenseError && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{expenseError}</div>}
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Description *</label>
+                <input type="text" value={expenseForm.description} onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="e.g. Materials purchased" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Type</label>
+                <select value={expenseForm.expense_type} onChange={e => setExpenseForm({ ...expenseForm, expense_type: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500">
+                  <option value="materials">Materials</option>
+                  <option value="labor">Labor</option>
+                  <option value="subcontractor">Subcontractor</option>
+                  <option value="travel">Travel</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Amount ($) *</label>
+                <input type="number" min="0" step="0.01" value={expenseForm.amount} onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="0.00" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowExpenseModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+                <button type="submit" disabled={savingExpense} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                  {savingExpense ? 'Adding...' : 'Add Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
 

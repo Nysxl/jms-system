@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .select('*, customer:customers(*)')
     .eq('email', email.trim().toLowerCase())
     .eq('password_plain', password)
-    .eq('is_active', true)
+    .eq('is_active', 1)
     .single();
 
   if (error || !portalUser) {

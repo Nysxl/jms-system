@@ -24,6 +24,9 @@ export const Header: React.FC<{ username?: string }> = ({ username }) => {
           <Link href="/invoices" className="text-slate-300 hover:text-white transition">
             Invoices
           </Link>
+          <Link href="/calendar" className="text-slate-300 hover:text-white transition">
+            Calendar
+          </Link>
           <Link href="/customers" className="text-slate-300 hover:text-white transition">
             Contacts
           </Link>
