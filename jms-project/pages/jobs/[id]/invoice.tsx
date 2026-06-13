@@ -27,6 +27,7 @@ interface LineItem {
   unit_price: number
   amount: number
   inventory_id: string | null
+  quantity_invoiced?: number
 }
 
 interface JobAttachment {
