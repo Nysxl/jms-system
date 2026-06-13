@@ -312,9 +312,19 @@ export default function PortalJobDetail() {
           ) : (
             <div className="space-y-3">
               {customerNotes.map(note => (
-                <div key={note.id} className="bg-slate-900 rounded-lg px-4 py-3">
-                  <p className="text-slate-300 text-sm">{note.content}</p>
-                  <p className="text-slate-600 text-xs mt-1">{new Date(note.created_at).toLocaleString()}</p>
+                <div key={note.id} className="bg-slate-900 rounded-lg px-4 py-3 group">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="text-slate-300 text-sm">{note.content}</p>
+                      <p className="text-slate-600 text-xs mt-1">{new Date(note.created_at).toLocaleString()}</p>
+                    </div>
+                    <button onClick={async () => {
+                      if (confirm('Delete this note?')) {
+                        await supabase.from('job_notes').delete().eq('id', note.id);
+                        setNotes(notes.filter(n => n.id !== note.id));
+                      }
+                    }} className="text-red-400 hover:text-red-300 text-xs opacity-0 group-hover:opacity-100 transition flex-shrink-0">✕</button>
+                  </div>
                 </div>
               ))}
             </div>
