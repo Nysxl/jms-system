@@ -41,6 +41,8 @@ interface CompanySettings {
   state: string;
   zip_code: string;
   logo_url: string;
+  bsb?: string;
+  account_number?: string;
 }
 
 export default function EditInvoice() {
