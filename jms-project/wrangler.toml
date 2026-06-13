@@ -1,0 +1,20 @@
+name = "jms-system"
+type = "service"
+main = ".open-next/worker.mjs"
+compatibility_date = "2024-12-04"
+
+vars = { ASSETS_PATH = "build/static" }
+
+[[env.production.vars]]
+name = "ENVIRONMENT"
+value = "production"
+
+[build]
+command = "npm run build"
+cwd = "."
+watch_paths = ["src/**/*.ts"]
+
+[env.production]
+routes = [
+  { pattern = "example.com", zone_name = "example.com" }
+]
