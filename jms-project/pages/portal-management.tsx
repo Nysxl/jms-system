@@ -103,16 +103,46 @@ export default function PortalManagement() {
     setEditError('');
     if (!editForm.email.trim() || !editForm.password.trim()) { setEditError('Email and password are required.'); return; }
     setIsSavingEdit(true);
-    const { error } = await supabase.from('portal_users').update({
-      email: editForm.email.trim(),
-      password_plain: editForm.password,
-      updated_at: new Date().toISOString(),
-    }).eq('id', selectedUser!.id);
-    if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
-    setEditSuccess(true);
-    setIsSavingEdit(false);
-    loadData(userId);
-    setTimeout(() => setShowEditModal(false), 1000);
+    try {
+      // Create or update Supabase Auth user
+      try {
+        // Try to create auth user
+        const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+          email: editForm.email.trim().toLowerCase(),
+          password: editForm.password,
+          email_confirm: true,
+        });
+
+        if (signUpError && !signUpError.message.includes('already exists')) {
+          throw signUpError;
+        }
+
+        // If user exists, update their password
+        if (signUpError?.message.includes('already exists') && selectedUser?.id) {
+          await supabase.auth.admin.updateUserById(selectedUser.id, {
+            password: editForm.password,
+          });
+        }
+      } catch (authError: any) {
+        console.error('Auth user creation/update failed:', authError);
+      }
+
+      // Update portal user
+      const { error } = await supabase.from('portal_users').update({
+        email: editForm.email.trim().toLowerCase(),
+        password_plain: editForm.password,
+        updated_at: new Date().toISOString(),
+      }).eq('id', selectedUser!.id);
+
+      if (error) { setEditError(error.message); setIsSavingEdit(false); return; }
+      setEditSuccess(true);
+      setIsSavingEdit(false);
+      loadData(userId);
+      setTimeout(() => setShowEditModal(false), 1000);
+    } catch (err: any) {
+      setEditError(err.message || 'Failed to save');
+      setIsSavingEdit(false);
+    }
   };
 
   const openResetPassword = (pu: PortalUser) => {
