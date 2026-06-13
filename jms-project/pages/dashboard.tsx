@@ -4,13 +4,12 @@ import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { JobCard } from '@/components/JobCard';
 import { supabase } from '@/lib/supabase';
-import { Job, Customer, Invoice } from '@/lib/types';
+import { Job, Customer } from '@/lib/types';
 
 export default function Dashboard() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
     totalJobs: 0,
@@ -44,7 +43,6 @@ export default function Dashboard() {
 
     setJobs(jobsList);
     setCustomers(custList);
-    setInvoices(invList);
 
     const totalRev = invList.reduce((s, i) => s + (i.total_amount || 0), 0);
     const paidRev = invList.reduce((s, i) => s + (i.amount_paid || 0), 0);
