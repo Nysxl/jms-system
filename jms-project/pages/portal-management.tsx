@@ -131,11 +131,16 @@ export default function PortalManagement() {
     }
     setResettingPassword(true);
     try {
-      const res = await axios.post('/api/portal/reset-password', {
-        portalUserId: resetUser!.id,
-        newPassword: resetPassword,
+      const res = await fetch('/api/portal/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          portalUserId: resetUser!.id,
+          newPassword: resetPassword,
+        }),
       });
-      if (res.data.success) {
+      const data = await res.json();
+      if (data.success) {
         setShowResetModal(false);
         loadData(userId);
         alert(`Password reset for ${resetUser!.email}`);
