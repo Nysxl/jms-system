@@ -5,10 +5,17 @@ import { PortalHeader } from '@/components/PortalHeader';
 import { supabase } from '@/lib/supabase';
 import { Job, PortalUser } from '@/lib/types';
 
+interface SubContact {
+  id: string;
+  name: string;
+  company_name?: string;
+}
+
 export default function PortalJobs() {
   const router = useRouter();
   const [portalUser, setPortalUser] = useState<PortalUser | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [subContacts, setSubContacts] = useState<SubContact[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -16,6 +23,7 @@ export default function PortalJobs() {
     title: '',
     description: '',
     scheduledDate: '',
+    subContactId: '',
   });
 
   useEffect(() => {
@@ -25,53 +33,40 @@ export default function PortalJobs() {
   const checkSession = async () => {
     try {
       const stored = localStorage.getItem('portal_session');
-      if (!stored) {
-        router.push('/portal/login');
-        return;
-      }
+      if (!stored) { router.push('/portal/login'); return; }
 
       const pu = JSON.parse(stored);
       setPortalUser(pu);
 
-      // Ensure Supabase auth session is active for RLS queries
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        router.push('/portal/login');
-        return;
-      }
+      if (!session) { router.push('/portal/login'); return; }
 
-      loadJobs(pu.customer_id);
+      loadData(pu.customer_id);
     } catch (err) {
-      console.error('Session check failed:', err);
       router.push('/portal/login');
     }
   };
 
-  const loadJobs = async (customerId: string) => {
+  const loadData = async (customerId: string) => {
     setIsLoading(true);
-    console.log('[portal] loadJobs for customer:', customerId);
 
-    const { data: { session } } = await supabase.auth.getSession();
-    console.log('[portal] auth session:', session?.user?.email, !!session);
-
-    const { data: subContacts, error: subError } = await supabase
+    // Load sub-contacts
+    const { data: subs } = await supabase
       .from('customers')
-      .select('id, name')
+      .select('id, name, company_name')
       .eq('contractor_id', customerId)
       .eq('customer_type', 'sub_contact');
 
-    console.log('[portal] sub-contacts:', subContacts, 'error:', subError?.message);
+    if (subs) setSubContacts(subs);
 
-    const customerIds = [customerId, ...(subContacts?.map(s => s.id) || [])];
-    console.log('[portal] querying jobs for customerIds:', customerIds);
-
-    const { data, error } = await supabase
+    // Load jobs for this customer + all sub-contacts
+    const customerIds = [customerId, ...(subs?.map(s => s.id) || [])];
+    const { data } = await supabase
       .from('jobs')
       .select('*')
       .in('customer_id', customerIds)
-      .order('scheduled_date', { ascending: true });
+      .order('created_at', { ascending: false });
 
-    console.log('[portal] jobs result:', data?.length, 'error:', error?.message);
     if (data) setJobs(data);
     setIsLoading(false);
   };
@@ -90,20 +85,19 @@ export default function PortalJobs() {
           title: formData.title,
           description: formData.description,
           scheduledDate: formData.scheduledDate || null,
+          subContactId: formData.subContactId || null,
         }),
       });
 
       if (res.ok) {
-        const { job } = await res.json();
-        setJobs([...jobs, job]);
-        setFormData({ title: '', description: '', scheduledDate: '' });
+        setFormData({ title: '', description: '', scheduledDate: '', subContactId: '' });
         setShowCreateForm(false);
+        loadData(portalUser.customer_id);
       } else {
-        alert('Failed to create job');
+        alert('Failed to create job request');
       }
     } catch (err) {
-      console.error('Create job error:', err);
-      alert('Error creating job');
+      alert('Error creating job request');
     } finally {
       setCreating(false);
     }
@@ -111,6 +105,7 @@ export default function PortalJobs() {
 
   const statusColor = (status: string) => {
     const map: Record<string, string> = {
+      'requested': 'bg-purple-500/20 text-purple-400',
       'pending': 'bg-yellow-500/20 text-yellow-400',
       'in-progress': 'bg-blue-500/20 text-blue-400',
       'completed': 'bg-green-500/20 text-green-400',
@@ -119,18 +114,23 @@ export default function PortalJobs() {
     return map[status] || 'bg-slate-600 text-slate-300';
   };
 
-  if (!portalUser) {
-    if (isLoading) {
-      return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
-    }
-    return null; // Will redirect in useEffect
-  }
+  const getJobCustomerLabel = (job: Job) => {
+    if (job.customer_id === portalUser?.customer_id) return null;
+    const sub = subContacts.find(s => s.id === job.customer_id);
+    return sub ? (sub.company_name || sub.name) : null;
+  };
+
+  if (!portalUser) return (
+    <div className="min-h-screen bg-slate-950 flex items-center justify-center">
+      <p className="text-slate-400">Loading...</p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-slate-950">
       <PortalHeader portalUserEmail={portalUser.email} />
 
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
             <h2 className="text-3xl font-bold text-white">Jobs</h2>
@@ -142,32 +142,64 @@ export default function PortalJobs() {
           </button>
         </div>
 
-        {/* Create Job Form */}
+        {/* Sub-contacts list */}
+        {subContacts.length > 0 && (
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 mb-6">
+            <h3 className="text-white font-semibold mb-3 text-sm uppercase tracking-wide">Your Sub-Contacts</h3>
+            <div className="flex flex-wrap gap-2">
+              {subContacts.map(sc => (
+                <span key={sc.id} className="px-3 py-1.5 bg-slate-700 text-slate-200 text-sm rounded-lg">
+                  {sc.company_name || sc.name}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Request Job Form */}
         {showCreateForm && (
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 mb-8">
             <h3 className="text-white font-semibold mb-4">Request a New Job</h3>
             <form onSubmit={handleCreateJob} className="space-y-4">
+              {subContacts.length > 0 && (
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Job For</label>
+                  <select
+                    value={formData.subContactId}
+                    onChange={e => setFormData({ ...formData, subContactId: e.target.value })}
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 transition"
+                  >
+                    <option value="">Myself</option>
+                    {subContacts.map(sc => (
+                      <option key={sc.id} value={sc.id}>{sc.company_name || sc.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Job Title *</label>
-                <input type="text" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })}
+                <input type="text" value={formData.title}
+                  onChange={e => setFormData({ ...formData, title: e.target.value })}
                   placeholder="e.g., Kitchen renovation, System maintenance"
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Description</label>
-                <textarea value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })}
+                <textarea value={formData.description}
+                  onChange={e => setFormData({ ...formData, description: e.target.value })}
                   placeholder="Describe what work needs to be done..."
                   rows={4}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 placeholder-slate-500 focus:outline-none focus:border-blue-500" />
               </div>
               <div>
                 <label className="block text-slate-300 text-sm font-medium mb-1">Preferred Date</label>
-                <input type="date" value={formData.scheduledDate} onChange={e => setFormData({ ...formData, scheduledDate: e.target.value })}
+                <input type="date" value={formData.scheduledDate}
+                  onChange={e => setFormData({ ...formData, scheduledDate: e.target.value })}
                   className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-4 py-2 focus:outline-none focus:border-blue-500" />
               </div>
               <button type="submit" disabled={creating || !formData.title.trim()}
                 className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2 px-6 rounded-lg transition">
-                {creating ? 'Creating...' : 'Send Job Request'}
+                {creating ? 'Sending...' : 'Send Job Request'}
               </button>
             </form>
           </div>
@@ -180,29 +212,36 @@ export default function PortalJobs() {
           <div className="bg-slate-800 rounded-xl border border-slate-700 p-12 text-center">
             <p className="text-5xl mb-4">📋</p>
             <p className="text-white font-semibold mb-2">No jobs yet</p>
-            <p className="text-slate-400 text-sm mb-6">Request your first job to get started.</p>
+            <p className="text-slate-400 text-sm">Request your first job to get started.</p>
           </div>
         ) : (
-          <div className="space-y-4">
+          <div className="space-y-3">
             {jobs.map(job => (
               <Link key={job.id} href={`/portal/jobs/${job.id}`}>
-                <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 hover:border-slate-600 transition cursor-pointer">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="text-white font-semibold text-lg mb-2">{job.title}</h3>
-                      {job.description && <p className="text-slate-400 text-sm mb-3">{job.description}</p>}
-                      <div className="flex items-center gap-4">
-                        <span className={`px-3 py-1 rounded-full text-xs font-semibold ${statusColor(job.status)}`}>
+                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 hover:border-slate-500 transition cursor-pointer">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1 flex-wrap">
+                        <h3 className="text-white font-semibold">{job.title}</h3>
+                        {getJobCustomerLabel(job) && (
+                          <span className="text-xs px-2 py-0.5 bg-indigo-500/20 text-indigo-300 rounded-full">
+                            {getJobCustomerLabel(job)}
+                          </span>
+                        )}
+                      </div>
+                      {job.description && <p className="text-slate-400 text-sm mb-2 line-clamp-1">{job.description}</p>}
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className={`px-2.5 py-0.5 rounded-full text-xs font-semibold ${statusColor(job.status)}`}>
                           {job.status}
                         </span>
                         {job.scheduled_date && (
-                          <span className="text-slate-400 text-sm">
+                          <span className="text-slate-500 text-xs">
                             📅 {new Date(job.scheduled_date).toLocaleDateString()}
                           </span>
                         )}
                       </div>
                     </div>
-                    <div className="text-slate-500 text-2xl">→</div>
+                    <div className="text-slate-600 text-xl">→</div>
                   </div>
                 </div>
               </Link>

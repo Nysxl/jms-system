@@ -9,7 +9,7 @@ const supabase = createClient(
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { portalUserId, title, description, scheduledDate } = req.body;
+  const { portalUserId, title, description, scheduledDate, subContactId } = req.body;
   if (!portalUserId || !title) {
     return res.status(400).json({ error: 'portalUserId and title are required.' });
   }
@@ -26,17 +26,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(404).json({ error: 'Portal user not found.' });
     }
 
-    // Create the job
+    // Use subContactId if provided, otherwise use the portal user's own customer
+    const targetCustomerId = subContactId || portalUser.customer_id;
+
+    // Create the job with 'requested' status so admin can review it
     const { data: job, error: jobError } = await supabase
       .from('jobs')
       .insert({
         user_id: portalUser.user_id,
-        customer_id: portalUser.customer_id,
+        customer_id: targetCustomerId,
+        billing_customer_id: subContactId ? portalUser.customer_id : null,
         created_by_portal_user: portalUserId,
         title,
         description: description || '',
         scheduled_date: scheduledDate || null,
-        status: 'pending',
+        status: 'requested',
         priority: 'medium',
       })
       .select()

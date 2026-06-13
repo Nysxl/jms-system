@@ -9,6 +9,7 @@ import { Job, Customer } from '@/lib/types';
 export default function Dashboard() {
   const router = useRouter();
   const [jobs, setJobs] = useState<Job[]>([]);
+  const [requestedJobs, setRequestedJobs] = useState<Job[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState({
@@ -31,15 +32,17 @@ export default function Dashboard() {
 
   const loadData = async () => {
     setIsLoading(true);
-    const [jobsRes, custRes, invRes] = await Promise.all([
-      supabase.from('jobs').select('*').order('created_at', { ascending: false }).limit(6),
+    const [jobsRes, custRes, invRes, requestedRes] = await Promise.all([
+      supabase.from('jobs').select('*').not('status', 'eq', 'requested').order('created_at', { ascending: false }).limit(6),
       supabase.from('customers').select('*'),
       supabase.from('invoices').select('*'),
+      supabase.from('jobs').select('*').eq('status', 'requested').order('created_at', { ascending: false }),
     ]);
 
     const jobsList = jobsRes.data || [];
     const custList = custRes.data || [];
     const invList = invRes.data || [];
+    setRequestedJobs(requestedRes.data || []);
 
     setJobs(jobsList);
     setCustomers(custList);
@@ -118,6 +121,48 @@ export default function Dashboard() {
             <p className="text-2xl font-bold text-red-300 mt-2">{stats.overduInvoices}</p>
           </div>
         </div>
+
+        {/* Requested Jobs */}
+        {requestedJobs.length > 0 && (
+          <div className="mb-10">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-3">
+                <h3 className="text-xl font-bold text-white">Requested Jobs</h3>
+                <span className="bg-purple-500/20 text-purple-400 text-xs font-semibold px-2.5 py-1 rounded-full">
+                  {requestedJobs.length} new
+                </span>
+              </div>
+            </div>
+            <div className="space-y-3">
+              {requestedJobs.map(job => {
+                const cust = customers.find(c => c.id === job.customer_id);
+                return (
+                  <Link key={job.id} href={`/jobs/${job.id}`}>
+                    <div className="bg-slate-800 border border-purple-500/30 rounded-xl p-5 hover:border-purple-500/60 transition cursor-pointer">
+                      <div className="flex items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-purple-400 text-xs font-semibold uppercase tracking-wide">Requested by portal</span>
+                          </div>
+                          <h4 className="text-white font-semibold">{job.title}</h4>
+                          {cust && <p className="text-slate-400 text-sm mt-0.5">{cust.company_name || cust.name}</p>}
+                          {job.description && <p className="text-slate-500 text-sm mt-1 line-clamp-1">{job.description}</p>}
+                          {job.scheduled_date && (
+                            <p className="text-slate-500 text-xs mt-2">📅 Requested for {new Date(job.scheduled_date).toLocaleDateString()}</p>
+                          )}
+                        </div>
+                        <div className="flex flex-col gap-2 items-end">
+                          <span className="text-xs text-slate-500">{new Date(job.created_at).toLocaleDateString()}</span>
+                          <span className="text-slate-400 text-sm">Review →</span>
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Recent Jobs */}
         <div>
