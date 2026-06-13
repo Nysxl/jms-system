@@ -4,11 +4,14 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+const isPortalPage = typeof window !== 'undefined' && window.location.pathname.startsWith('/portal');
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true,
+    storageKey: isPortalPage ? 'sb-portal-auth' : 'sb-admin-auth',
     storage: typeof window !== 'undefined' ? window.localStorage : {
       getItem: () => null,
       setItem: () => {},
