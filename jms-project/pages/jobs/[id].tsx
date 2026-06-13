@@ -757,7 +757,6 @@ export default function JobDetail() {
                       ))}
                     </div>
                   )}
-                </div>
                 </>
               )}
             </div>
