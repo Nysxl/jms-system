@@ -55,7 +55,7 @@ export default function QuotationDetail() {
       })
       .eq('id', id);
     if (!error) {
-      setQuotation({ ...quotation, ...editForm });
+      setQuotation({ ...quotation, ...editForm, status: editForm.status as Quotation['status'] });
       setEditMode(false);
     }
     setSaving(false);
