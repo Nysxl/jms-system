@@ -43,6 +43,7 @@ export interface Job {
   user_id: string;
   customer_id: string;
   billing_customer_id?: string; // if set, invoices go here instead of customer_id
+  created_by_portal_user?: string; // portal_user_id if created by customer portal
   title: string;
   description?: string;
   status: JobStatus;
@@ -50,7 +51,12 @@ export interface Job {
   scheduled_date?: string;
   completed_date?: string;
   total_amount?: number;
+  estimated_hours?: number;
+  hourly_rate?: number;
   notes?: string;
+  signature_data?: string; // base64 encoded signature
+  signed_by?: string; // name of person who signed
+  signed_at?: string; // timestamp of signature
   // joined fields
   customer?: Customer;
   billing_customer?: Customer;
@@ -246,6 +252,57 @@ export interface PortalActivityLog {
   ip_address?: string;
   created_at: string;
   portal_user?: PortalUser;
+}
+
+// Quotation Types
+export interface QuotationItem {
+  id: string;
+  quotation_id: string;
+  description: string;
+  quantity: number;
+  unit_price: number;
+  amount: number;
+  created_at: string;
+}
+
+export interface Quotation {
+  id: string;
+  user_id: string;
+  customer_id: string;
+  title: string;
+  description?: string;
+  subtotal: number;
+  tax_amount: number;
+  total_amount: number;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected' | 'expired';
+  valid_until?: string;
+  notes?: string;
+  items?: QuotationItem[];
+  customer?: Customer;
+  created_at: string;
+  updated_at: string;
+}
+
+// Time Tracking Types
+export interface TimeEntry {
+  id: string;
+  user_id: string;
+  job_id: string;
+  description?: string;
+  hours: number;
+  date_worked: string;
+  created_at: string;
+  updated_at: string;
+}
+
+// Payment Reminder Types
+export interface PaymentReminder {
+  id: string;
+  user_id: string;
+  invoice_id: string;
+  reminder_type?: string;
+  sent_date?: string;
+  created_at: string;
 }
 
 // API Response Types

@@ -50,6 +50,13 @@ export default function PortalManagement() {
   // Password visibility toggle per user
   const [showPassword, setShowPassword] = useState<Record<string, boolean>>({});
 
+  // Reset password modal
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetUser, setResetUser] = useState<PortalUser | null>(null);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetError, setResetError] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
+
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push('/login'); return; }
@@ -106,6 +113,38 @@ export default function PortalManagement() {
     setIsSavingEdit(false);
     loadData(userId);
     setTimeout(() => setShowEditModal(false), 1000);
+  };
+
+  const openResetPassword = (pu: PortalUser) => {
+    setResetUser(pu);
+    setResetPassword('');
+    setResetError('');
+    setShowResetModal(true);
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setResetError('');
+    if (!resetPassword.trim() || resetPassword.length < 6) {
+      setResetError('Password must be at least 6 characters.');
+      return;
+    }
+    setResettingPassword(true);
+    try {
+      const { data } = await supabase.from('portal_users').select('user_id').eq('id', resetUser!.id).single();
+      const res = await axios.post('/api/portal/reset-password', {
+        portalUserId: resetUser!.id,
+        newPassword: resetPassword,
+      });
+      if (res.data.success) {
+        setShowResetModal(false);
+        loadData(userId);
+        alert(`Password reset for ${resetUser!.email}`);
+      }
+    } catch (err: any) {
+      setResetError(err.response?.data?.error || 'Failed to reset password.');
+    }
+    setResettingPassword(false);
   };
 
   const deletePortalUser = async (id: string) => {
@@ -195,6 +234,7 @@ export default function PortalManagement() {
 
                       <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                         <button onClick={() => openEdit(pu)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-xs font-medium py-1.5 rounded-lg transition">Edit</button>
+                        <button onClick={() => openResetPassword(pu)} className="flex-1 bg-orange-500/10 hover:bg-orange-500/20 text-orange-400 text-xs font-medium py-1.5 rounded-lg transition">Reset</button>
                         <button onClick={() => toggleActive(pu)} className={`flex-1 text-xs font-medium py-1.5 rounded-lg transition ${pu.is_active ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}>
                           {pu.is_active ? 'Disable' : 'Enable'}
                         </button>
@@ -287,6 +327,32 @@ export default function PortalManagement() {
                 <button type="button" onClick={() => setShowEditModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
                 <button type="submit" disabled={isSavingEdit} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
                   {isSavingEdit ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetModal && resetUser && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-sm">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold">Reset Password</h3>
+              <button onClick={() => setShowResetModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+            <form onSubmit={handleResetPassword} className="p-6 space-y-4">
+              {resetError && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{resetError}</div>}
+              <p className="text-slate-400 text-sm">Resetting password for <strong>{resetUser.email}</strong></p>
+              <div>
+                <label className={labelCls}>New Password</label>
+                <input type="password" value={resetPassword} onChange={e => setResetPassword(e.target.value)} className={inputCls} placeholder="New password" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowResetModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+                <button type="submit" disabled={resettingPassword} className="flex-1 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                  {resettingPassword ? 'Resetting...' : 'Reset Password'}
                 </button>
               </div>
             </form>

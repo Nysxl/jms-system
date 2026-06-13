@@ -106,6 +106,13 @@ export default function JobDetail() {
   const [savingExpense, setSavingExpense] = useState(false);
   const [expenseError, setExpenseError] = useState('');
 
+  // Time Tracking
+  const [timeEntries, setTimeEntries] = useState<any[]>([]);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [timeForm, setTimeForm] = useState({ date_worked: new Date().toISOString().split('T')[0], hours: '', description: '' });
+  const [savingTime, setSavingTime] = useState(false);
+  const [timeError, setTimeError] = useState('');
+
   // Line items
   const [showLineItemModal, setShowLineItemModal] = useState(false);
   const [lineItemMode, setLineItemMode] = useState<'inventory' | 'writein'>('inventory');
@@ -128,6 +135,17 @@ export default function JobDetail() {
   const [savingReport, setSavingReport] = useState(false);
   const [reportError, setReportError] = useState('');
 
+  // Report forms and tasks
+  const [reportForms, setReportForms] = useState<Record<string, boolean>>({
+    'safety-checklist': false,
+    'equipment-inspection': false,
+    'quality-assurance': false,
+    'customer-signoff': false,
+    'work-completion': false,
+  });
+  const [reportTasks, setReportTasks] = useState<Array<{ id: string; description: string; completed: boolean }>>([]);
+  const [newTaskDesc, setNewTaskDesc] = useState('');
+
   // Lightbox
   const [lightbox, setLightbox] = useState<string | null>(null);
 
@@ -137,7 +155,7 @@ export default function JobDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory(), loadExpenses()]);
+    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory(), loadExpenses(), loadTimeEntries()]);
     setIsLoading(false);
   };
 
@@ -185,6 +203,11 @@ export default function JobDetail() {
     if (data) setExpenses(data);
   };
 
+  const loadTimeEntries = async () => {
+    const { data } = await supabase.from('time_entries').select('*').eq('job_id', id).order('date_worked', { ascending: false });
+    if (data) setTimeEntries(data);
+  };
+
   const handleSaveExpense = async (e: React.FormEvent) => {
     e.preventDefault();
     setExpenseError('');
@@ -213,6 +236,36 @@ export default function JobDetail() {
   const handleDeleteExpense = async (expenseId: string) => {
     await supabase.from('expenses').delete().eq('id', expenseId);
     loadExpenses();
+  };
+
+  const handleSaveTimeEntry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTimeError('');
+    if (!timeForm.hours || parseFloat(timeForm.hours) <= 0) {
+      setTimeError('Hours must be greater than 0.');
+      return;
+    }
+    setSavingTime(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from('time_entries').insert([{
+      user_id: user?.id,
+      job_id: id,
+      description: timeForm.description,
+      hours: parseFloat(timeForm.hours),
+      date_worked: timeForm.date_worked,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }]);
+    if (error) { setTimeError(error.message); setSavingTime(false); return; }
+    setSavingTime(false);
+    setShowTimeModal(false);
+    setTimeForm({ date_worked: new Date().toISOString().split('T')[0], hours: '', description: '' });
+    loadTimeEntries();
+  };
+
+  const handleDeleteTimeEntry = async (entryId: string) => {
+    await supabase.from('time_entries').delete().eq('id', entryId);
+    loadTimeEntries();
   };
 
   const handleAddNote = async (e: React.FormEvent) => {
@@ -244,6 +297,14 @@ export default function JobDetail() {
       updated_at: new Date().toISOString(),
     }).eq('id', noteId);
     setEditingNoteTimestamp(null);
+    loadNotes();
+  };
+
+  const toggleNoteInternal = async (noteId: string, currentValue: boolean) => {
+    await supabase.from('job_notes').update({
+      is_internal: !currentValue,
+      updated_at: new Date().toISOString(),
+    }).eq('id', noteId);
     loadNotes();
   };
 
@@ -410,6 +471,15 @@ export default function JobDetail() {
   const openCreateReport = () => {
     setEditingReport(null);
     setReportForm({ title: job?.title || '', description: job?.description || '', work_performed: '', parts_used: '', labor_hours: '', labor_rate: '' });
+    setReportForms({
+      'safety-checklist': false,
+      'equipment-inspection': false,
+      'quality-assurance': false,
+      'customer-signoff': false,
+      'work-completion': false,
+    });
+    setReportTasks([]);
+    setNewTaskDesc('');
     setReportError('');
     setShowReportModal(true);
   };
@@ -421,6 +491,19 @@ export default function JobDetail() {
       work_performed: report.work_performed || '', parts_used: report.parts_used || '',
       labor_hours: report.labor_hours?.toString() || '', labor_rate: report.labor_rate?.toString() || '',
     });
+    // Load forms and tasks from report if they exist
+    const completedForms = (report as any).completed_forms ? JSON.parse((report as any).completed_forms) : [];
+    const forms: Record<string, boolean> = {
+      'safety-checklist': completedForms.includes('safety-checklist'),
+      'equipment-inspection': completedForms.includes('equipment-inspection'),
+      'quality-assurance': completedForms.includes('quality-assurance'),
+      'customer-signoff': completedForms.includes('customer-signoff'),
+      'work-completion': completedForms.includes('work-completion'),
+    };
+    setReportForms(forms);
+    const tasks = (report as any).completed_tasks ? JSON.parse((report as any).completed_tasks) : [];
+    setReportTasks(tasks);
+    setNewTaskDesc('');
     setReportError('');
     setShowReportModal(true);
   };
@@ -436,6 +519,8 @@ export default function JobDetail() {
       parts_used: reportForm.parts_used,
       labor_hours: reportForm.labor_hours ? parseFloat(reportForm.labor_hours) : null,
       labor_rate: reportForm.labor_rate ? parseFloat(reportForm.labor_rate) : null,
+      completed_forms: JSON.stringify(Object.entries(reportForms).filter(([_,v]) => v).map(([k,_]) => k)),
+      completed_tasks: JSON.stringify(reportTasks),
       updated_at: new Date().toISOString(),
     };
     if (editingReport) {
@@ -601,167 +686,223 @@ export default function JobDetail() {
               )}
             </div>
 
-            {/* Photos */}
+            {/* Attachments - Consolidated View (Customer & Admin Notes, Photos, Files) */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-2">
-                <h3 className="text-white font-semibold">Photos</h3>
-                <button onClick={() => fileRef.current?.click()} disabled={uploadingPhoto}
-                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
-                  {uploadingPhoto ? 'Uploading...' : '+ Add Photos'}
-                </button>
-                <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
-              </div>
-              {/* Timestamp for next upload */}
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-slate-500 text-xs">Timestamp uploads:</span>
-                <input type="datetime-local" value={photoTimestamp} onChange={e => setPhotoTimestamp(e.target.value)}
-                  className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
-                {photoTimestamp && <button onClick={() => setPhotoTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
-              </div>
-              {images.length === 0 ? (
-                <div onClick={() => fileRef.current?.click()}
-                  className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
-                  <p className="text-3xl mb-2">📷</p>
-                  <p className="text-slate-400 text-sm">Click to upload job photos</p>
-                </div>
-              ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {images.map(img => (
-                    <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
-                      <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
-                      <button onClick={() => handleDeletePhoto(img)}
-                        className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
-                      {/* Timestamp display/edit */}
-                      <div className="px-2 py-1 bg-slate-800/90">
-                        {editingImageTimestamp === img.id ? (
-                          <div className="flex items-center gap-1">
-                            <input type="datetime-local" value={editingImageTs} onChange={e => setEditingImageTs(e.target.value)}
-                              className="flex-1 bg-slate-700 border border-slate-500 text-slate-200 rounded px-1 py-0.5 text-xs focus:outline-none" />
-                            <button onClick={() => saveImageTimestamp(img.id)} className="text-green-400 text-xs transition">✓</button>
-                            <button onClick={() => setEditingImageTimestamp(null)} className="text-slate-500 text-xs transition">✕</button>
-                          </div>
-                        ) : (
-                          <button onClick={() => { setEditingImageTimestamp(img.id); setEditingImageTs((img.display_timestamp || img.uploaded_at).slice(0, 16)); }}
-                            className="text-slate-500 hover:text-slate-300 text-xs transition w-full text-left truncate">
-                            {formatDateTime(img.display_timestamp || img.uploaded_at)}
-                            {img.display_timestamp && img.display_timestamp !== img.uploaded_at && <span className="ml-1 text-yellow-600">✎</span>}
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                  <div onClick={() => fileRef.current?.click()}
-                    className="aspect-square border-2 border-dashed border-slate-600 rounded-lg flex items-center justify-center cursor-pointer hover:border-blue-500 transition">
-                    <span className="text-slate-500 text-2xl">+</span>
-                  </div>
-                </div>
-              )}
-            </div>
+              <h3 className="text-white font-semibold mb-6">Attachments & Collaboration</h3>
 
-            {/* Attachments */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-white font-semibold">Attachments</h3>
-                <button onClick={() => attachRef.current?.click()} disabled={uploadingAttachment}
-                  className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
-                  {uploadingAttachment ? 'Uploading...' : '+ Add Files'}
-                </button>
-                <input ref={attachRef} type="file" multiple onChange={handleAttachmentUpload} className="hidden" />
-              </div>
-              {attachments.length === 0 ? (
-                <div onClick={() => attachRef.current?.click()}
-                  className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
-                  <p className="text-3xl mb-2">📎</p>
-                  <p className="text-slate-400 text-sm">Click to attach files — PDFs, Word docs, spreadsheets, and more</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {attachments.map(att => (
-                    <div key={att.id} className="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3 group">
-                      <span className="text-2xl flex-shrink-0">{fileIcon(att.file_type)}</span>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white text-sm font-medium truncate">{att.file_name}</p>
-                        <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)}</p>
-                      </div>
-                      <div className="flex gap-2 flex-shrink-0">
-                        {att.file_type === 'application/pdf' ? (
-                          <button onClick={() => setPreviewAttachment(att)}
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
-                        ) : att.file_type.startsWith('image/') ? (
-                          <button onClick={() => setLightbox(att.file_url)}
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
-                        ) : (
-                          <a href={att.file_url} target="_blank" rel="noopener noreferrer"
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">Open</a>
-                        )}
-                        <a href={att.file_url} download={att.file_name}
-                          className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">↓</a>
-                        <button onClick={() => handleDeleteAttachment(att)}
-                          className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100">✕</button>
-                      </div>
-                    </div>
-                  ))}
-                  <div onClick={() => attachRef.current?.click()}
-                    className="flex items-center gap-3 border-2 border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-blue-500 transition">
-                    <span className="text-slate-500 text-xl">+</span>
-                    <span className="text-slate-500 text-sm">Add more files</span>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Notes */}
-            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
-              <h3 className="text-white font-semibold mb-4">Notes</h3>
-              <form onSubmit={handleAddNote} className="space-y-2 mb-4">
-                <div className="flex gap-2">
-                  <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..."
-                    className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
-                  <button type="submit" disabled={savingNote || !newNote.trim()}
-                    className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition">Add</button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-slate-500 text-xs">Timestamp:</span>
-                  <input type="datetime-local" value={newNoteTimestamp} onChange={e => setNewNoteTimestamp(e.target.value)}
-                    className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
-                  {newNoteTimestamp && <button type="button" onClick={() => setNewNoteTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
-                  {!newNoteTimestamp && <span className="text-slate-600 text-xs italic">defaults to now</span>}
-                </div>
-              </form>
-              {notes.length === 0 ? (
-                <p className="text-slate-500 text-sm text-center py-4">No notes yet.</p>
-              ) : (
-                <div className="space-y-3">
-                  {notes.map(note => (
-                    <div key={note.id} className="flex gap-3 group">
-                      <div className="flex-1 bg-slate-900 rounded-lg px-4 py-3">
+              {/* Customer Notes Section */}
+              <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-indigo-700/30">
+                <h4 className="text-indigo-300 font-medium text-sm mb-4">👤 Customer Notes</h4>
+                {notes.filter(n => n.author_type === 'portal_user').length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-3 italic">No customer notes yet</p>
+                ) : (
+                  <div className="space-y-2">
+                    {notes.filter(n => n.author_type === 'portal_user').map(note => (
+                      <div key={note.id} className="bg-slate-900 rounded-lg px-3 py-2">
                         <p className="text-slate-300 text-sm">{note.content}</p>
-                        <div className="flex items-center gap-2 mt-1 flex-wrap">
-                          {note.author_type === 'portal_user' && (
-                            <span className="text-xs bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded">Client</span>
-                          )}
-                          {editingNoteTimestamp === note.id ? (
-                            <div className="flex items-center gap-1">
-                              <input type="datetime-local" value={editingNoteTs} onChange={e => setEditingNoteTs(e.target.value)}
-                                className="bg-slate-800 border border-slate-600 text-slate-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-500" />
-                              <button onClick={() => saveNoteTimestamp(note.id)} className="text-green-400 hover:text-green-300 text-xs transition">✓</button>
-                              <button onClick={() => setEditingNoteTimestamp(null)} className="text-slate-500 hover:text-slate-300 text-xs transition">✕</button>
-                            </div>
-                          ) : (
-                            <button onClick={() => { setEditingNoteTimestamp(note.id); setEditingNoteTs(note.display_timestamp ? note.display_timestamp.slice(0, 16) : note.created_at.slice(0, 16)); }}
-                              className="text-slate-600 hover:text-slate-400 text-xs transition" title="Edit timestamp">
-                              {formatDateTime(note.display_timestamp || note.created_at)}
-                              {note.display_timestamp && note.display_timestamp !== note.created_at && (
-                                <span className="ml-1 text-yellow-600">✎</span>
-                              )}
-                            </button>
-                          )}
+                        <p className="text-slate-600 text-xs mt-1">{formatDateTime(note.display_timestamp || note.created_at)}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Your Notes Section (Admin) */}
+              <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-slate-700">
+                <h4 className="text-slate-300 font-medium text-sm mb-4">📝 Your Notes</h4>
+                <form onSubmit={handleAddNote} className="space-y-2 mb-4">
+                  <div className="flex gap-2">
+                    <input type="text" value={newNote} onChange={e => setNewNote(e.target.value)} placeholder="Add a note..."
+                      className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                    <button type="submit" disabled={savingNote || !newNote.trim()}
+                      className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white text-sm px-4 py-2 rounded-lg transition">Add</button>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500 text-xs">Timestamp:</span>
+                    <input type="datetime-local" value={newNoteTimestamp} onChange={e => setNewNoteTimestamp(e.target.value)}
+                      className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
+                    {newNoteTimestamp && <button type="button" onClick={() => setNewNoteTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
+                    {!newNoteTimestamp && <span className="text-slate-600 text-xs italic">defaults to now</span>}
+                  </div>
+                </form>
+                {notes.filter(n => n.author_type === 'admin').length === 0 ? (
+                  <p className="text-slate-500 text-sm text-center py-3 italic">No notes yet.</p>
+                ) : (
+                  <div className="space-y-3">
+                    {notes.filter(n => n.author_type === 'admin').map(note => (
+                      <div key={note.id} className="flex gap-3 group">
+                        <div className="flex-1 bg-slate-900 rounded-lg px-4 py-3">
+                          <p className="text-slate-300 text-sm">{note.content}</p>
+                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                            {editingNoteTimestamp === note.id ? (
+                              <div className="flex items-center gap-1">
+                                <input type="datetime-local" value={editingNoteTs} onChange={e => setEditingNoteTs(e.target.value)}
+                                  className="bg-slate-800 border border-slate-600 text-slate-300 rounded px-2 py-0.5 text-xs focus:outline-none focus:border-blue-500" />
+                                <button onClick={() => saveNoteTimestamp(note.id)} className="text-green-400 hover:text-green-300 text-xs transition">✓</button>
+                                <button onClick={() => setEditingNoteTimestamp(null)} className="text-slate-500 hover:text-slate-300 text-xs transition">✕</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setEditingNoteTimestamp(note.id); setEditingNoteTs(note.display_timestamp ? note.display_timestamp.slice(0, 16) : note.created_at.slice(0, 16)); }}
+                                className="text-slate-600 hover:text-slate-400 text-xs transition" title="Edit timestamp">
+                                {formatDateTime(note.display_timestamp || note.created_at)}
+                                {note.display_timestamp && note.display_timestamp !== note.created_at && (
+                                  <span className="ml-1 text-yellow-600">✎</span>
+                                )}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                          <button onClick={() => toggleNoteInternal(note.id, note.is_internal || false)}
+                            className={`text-sm transition ${note.is_internal ? 'text-orange-400 hover:text-orange-300' : 'text-slate-600 hover:text-slate-400'}`}
+                            title={note.is_internal ? 'Hidden from portal users' : 'Visible to portal users'}>
+                            {note.is_internal ? '🔒' : '👁️'}
+                          </button>
+                          <button onClick={() => handleDeleteNote(note.id)}
+                            className="text-slate-600 hover:text-red-400 text-sm transition">✕</button>
                         </div>
                       </div>
-                      <button onClick={() => handleDeleteNote(note.id)}
-                        className="text-slate-600 hover:text-red-400 text-sm opacity-0 group-hover:opacity-100 transition">✕</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Photos Section - Customer + Admin */}
+              <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-slate-700">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-slate-300 font-medium text-sm">📷 Photos</h4>
+                  <button onClick={() => fileRef.current?.click()} disabled={uploadingPhoto}
+                    className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
+                    {uploadingPhoto ? 'Uploading...' : '+ Add Photos'}
+                  </button>
+                  <input ref={fileRef} type="file" accept="image/*" multiple onChange={handlePhotoUpload} className="hidden" />
+                </div>
+                {/* Timestamp for next upload */}
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-slate-500 text-xs">Timestamp uploads:</span>
+                  <input type="datetime-local" value={photoTimestamp} onChange={e => setPhotoTimestamp(e.target.value)}
+                    className="bg-slate-900 border border-slate-700 text-slate-300 rounded px-2 py-1 text-xs focus:outline-none focus:border-blue-500 transition" />
+                  {photoTimestamp && <button onClick={() => setPhotoTimestamp('')} className="text-slate-500 hover:text-slate-300 text-xs transition">clear</button>}
+                </div>
+
+                {/* Customer Photos */}
+                {images.filter(img => img.author_type === 'portal_user').length > 0 && (
+                  <div className="mb-4 pb-4 border-b border-slate-700">
+                    <p className="text-indigo-300 text-xs font-medium mb-2">👤 Customer Photos</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {images.filter(img => img.author_type === 'portal_user').map(img => (
+                        <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
+                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                        </div>
+                      ))}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                {/* Your Photos */}
+                {images.filter(img => img.author_type === 'admin').length > 0 && (
+                  <div>
+                    <p className="text-slate-300 text-xs font-medium mb-2">📸 Your Photos</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                      {images.filter(img => img.author_type === 'admin').map(img => (
+                        <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
+                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                          <button onClick={() => handleDeletePhoto(img)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
+                          <div className="px-2 py-1 bg-slate-800/90">
+                            {editingImageTimestamp === img.id ? (
+                              <div className="flex items-center gap-1">
+                                <input type="datetime-local" value={editingImageTs} onChange={e => setEditingImageTs(e.target.value)}
+                                  className="flex-1 bg-slate-700 border border-slate-500 text-slate-200 rounded px-1 py-0.5 text-xs focus:outline-none" />
+                                <button onClick={() => saveImageTimestamp(img.id)} className="text-green-400 text-xs transition">✓</button>
+                                <button onClick={() => setEditingImageTimestamp(null)} className="text-slate-500 text-xs transition">✕</button>
+                              </div>
+                            ) : (
+                              <button onClick={() => { setEditingImageTimestamp(img.id); setEditingImageTs((img.display_timestamp || img.uploaded_at).slice(0, 16)); }}
+                                className="text-slate-500 hover:text-slate-300 text-xs transition w-full text-left truncate">
+                                {formatDateTime(img.display_timestamp || img.uploaded_at)}
+                                {img.display_timestamp && img.display_timestamp !== img.uploaded_at && <span className="ml-1 text-yellow-600">✎</span>}
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {images.length === 0 && (
+                  <div onClick={() => fileRef.current?.click()}
+                    className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
+                    <p className="text-3xl mb-2">📷</p>
+                    <p className="text-slate-400 text-sm">Click to upload job photos</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Files Section */}
+              <div className="bg-slate-800 rounded-lg p-4 mb-6 border border-slate-700">
+                <div className="flex items-center justify-between mb-4">
+                  <h4 className="text-slate-300 font-medium text-sm">📎 Files</h4>
+                  <button onClick={() => attachRef.current?.click()} disabled={uploadingAttachment}
+                    className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm px-4 py-1.5 rounded-lg transition">
+                    {uploadingAttachment ? 'Uploading...' : '+ Add Files'}
+                  </button>
+                  <input ref={attachRef} type="file" multiple onChange={handleAttachmentUpload} className="hidden" />
+                </div>
+                {attachments.length === 0 ? (
+                  <div onClick={() => attachRef.current?.click()}
+                    className="border-2 border-dashed border-slate-600 rounded-xl p-10 text-center cursor-pointer hover:border-blue-500 transition">
+                    <p className="text-3xl mb-2">📎</p>
+                    <p className="text-slate-400 text-sm">Click to attach files — PDFs, Word docs, spreadsheets, and more</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {attachments.map(att => (
+                      <div key={att.id} className="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3 group">
+                        <span className="text-2xl flex-shrink-0">{fileIcon(att.file_type)}</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm font-medium truncate">{att.file_name}</p>
+                          <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)}</p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          {att.file_type === 'application/pdf' ? (
+                            <button onClick={() => setPreviewAttachment(att)}
+                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
+                          ) : att.file_type.startsWith('image/') ? (
+                            <button onClick={() => setLightbox(att.file_url)}
+                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
+                          ) : (
+                            <a href={att.file_url} target="_blank" rel="noopener noreferrer"
+                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">Open</a>
+                          )}
+                          <a href={att.file_url} download={att.file_name}
+                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">↓</a>
+                          <button onClick={() => handleDeleteAttachment(att)}
+                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100">✕</button>
+                        </div>
+                      </div>
+                    ))}
+                    <div onClick={() => attachRef.current?.click()}
+                      className="flex items-center gap-3 border-2 border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-blue-500 transition">
+                      <span className="text-slate-500 text-xl">+</span>
+                      <span className="text-slate-500 text-sm">Add more files</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Digital Signature Section */}
+              {job.status === 'completed' && (
+                <div className="bg-slate-800 rounded-lg p-4 border border-green-700/30">
+                  <h4 className="text-green-300 font-medium text-sm mb-4">✍️ Digital Signature</h4>
+                  {job.signature_data ? (
+                    <div>
+                      <img src={job.signature_data} alt="Signature" className="max-w-xs border border-slate-600 rounded-lg mb-3" />
+                      <p className="text-slate-400 text-xs">Signed by {job.signed_by} on {job.signed_at ? new Date(job.signed_at).toLocaleString() : 'unknown date'}</p>
+                    </div>
+                  ) : (
+                    <p className="text-slate-500 text-sm italic">Waiting for customer signature...</p>
+                  )}
                 </div>
               )}
             </div>
@@ -830,6 +971,61 @@ export default function JobDetail() {
                 </div>
               </div>
             </div>
+
+            {/* Time Tracking */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold">Time Tracking</h3>
+                <button onClick={() => setShowTimeModal(true)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition">+ Log Hours</button>
+              </div>
+              {timeEntries.length === 0 ? (
+                <p className="text-slate-500 text-sm text-center py-4">No time entries yet.</p>
+              ) : (
+                <div className="space-y-3">
+                  {timeEntries.map(entry => (
+                    <div key={entry.id} className="flex justify-between items-center bg-slate-900 rounded-lg px-4 py-3">
+                      <div>
+                        <p className="text-white text-sm font-medium">{entry.hours}h on {new Date(entry.date_worked).toLocaleDateString()}</p>
+                        {entry.description && <p className="text-slate-400 text-xs">{entry.description}</p>}
+                      </div>
+                      <button onClick={() => handleDeleteTimeEntry(entry.id)}
+                        className="text-slate-500 hover:text-red-400 text-xs transition">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="border-t border-slate-700 pt-3 mt-3">
+                <div className="flex justify-between text-sm">
+                  <span className="text-slate-400">Total Hours:</span>
+                  <span className="text-blue-400 font-semibold">{timeEntries.reduce((s, t) => s + t.hours, 0).toFixed(1)}h</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Job Profitability */}
+            {job && (
+              <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+                <h3 className="text-white font-semibold mb-4">Profitability</h3>
+                {(() => {
+                  const revenue = job.total_amount || 0;
+                  const expenseTotal = expenses.reduce((s, e) => s + e.amount, 0);
+                  const profit = revenue - expenseTotal;
+                  const margin = revenue > 0 ? (profit / revenue * 100) : 0;
+                  return (
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between"><span className="text-slate-400">Revenue:</span><span className="text-white font-semibold">${revenue.toFixed(2)}</span></div>
+                      <div className="flex justify-between"><span className="text-slate-400">Expenses:</span><span className="text-orange-400">${expenseTotal.toFixed(2)}</span></div>
+                      <div className="border-t border-slate-700 pt-2 flex justify-between">
+                        <span className="text-slate-300 font-medium">Profit:</span>
+                        <span className={`font-semibold ${profit >= 0 ? 'text-green-400' : 'text-red-400'}`}>${profit.toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between text-xs"><span className="text-slate-400">Margin:</span><span className={profit >= 0 ? 'text-green-400' : 'text-red-400'}>{margin.toFixed(1)}%</span></div>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {customer && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
@@ -995,6 +1191,64 @@ export default function JobDetail() {
                     className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" placeholder="0.00" />
                 </div>
               </div>
+
+              {/* Forms Section */}
+              <div className="border-t border-slate-700 pt-4">
+                <h4 className="text-white font-semibold mb-3">Forms Completed</h4>
+                <div className="space-y-2">
+                  {Object.entries({
+                    'safety-checklist': '☑️ Safety Checklist',
+                    'equipment-inspection': '☑️ Equipment Inspection',
+                    'quality-assurance': '☑️ Quality Assurance',
+                    'customer-signoff': '☑️ Customer Sign-off',
+                    'work-completion': '☑️ Work Completion Checklist',
+                  }).map(([key, label]) => (
+                    <label key={key} className="flex items-center gap-2 cursor-pointer">
+                      <input type="checkbox" checked={reportForms[key]} onChange={e => setReportForms({ ...reportForms, [key]: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-600 bg-slate-900 cursor-pointer" />
+                      <span className="text-slate-300 text-sm">{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Completed Tasks Section */}
+              <div className="border-t border-slate-700 pt-4">
+                <h4 className="text-white font-semibold mb-3">Completed Tasks</h4>
+                {reportTasks.length > 0 && (
+                  <div className="space-y-2 mb-4">
+                    {reportTasks.map(task => (
+                      <label key={task.id} className="flex items-center gap-2 cursor-pointer bg-slate-900 p-2 rounded-lg">
+                        <input type="checkbox" checked={task.completed} onChange={e => {
+                          setReportTasks(reportTasks.map(t => t.id === task.id ? { ...t, completed: e.target.checked } : t));
+                        }}
+                          className="w-4 h-4 rounded border-slate-600 bg-slate-900 cursor-pointer" />
+                        <span className={`text-sm flex-1 ${task.completed ? 'text-slate-500 line-through' : 'text-slate-300'}`}>{task.description}</span>
+                        <button type="button" onClick={() => setReportTasks(reportTasks.filter(t => t.id !== task.id))}
+                          className="text-slate-500 hover:text-red-400 text-xs transition">✕</button>
+                      </label>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-2">
+                  <input type="text" value={newTaskDesc} onChange={e => setNewTaskDesc(e.target.value)} placeholder="Add task..."
+                    className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500"
+                    onKeyPress={e => {
+                      if (e.key === 'Enter' && newTaskDesc.trim()) {
+                        setReportTasks([...reportTasks, { id: Math.random().toString(), description: newTaskDesc, completed: false }]);
+                        setNewTaskDesc('');
+                      }
+                    }} />
+                  <button type="button" onClick={() => {
+                    if (newTaskDesc.trim()) {
+                      setReportTasks([...reportTasks, { id: Math.random().toString(), description: newTaskDesc, completed: false }]);
+                      setNewTaskDesc('');
+                    }
+                  }}
+                    className="bg-blue-500 hover:bg-blue-600 text-white text-sm px-3 py-2 rounded-lg transition">+</button>
+                </div>
+              </div>
+
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={() => setShowReportModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
                 <button type="submit" disabled={savingReport} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
@@ -1056,6 +1310,42 @@ export default function JobDetail() {
                 <button type="button" onClick={() => setShowExpenseModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
                 <button type="submit" disabled={savingExpense} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
                   {savingExpense ? 'Adding...' : 'Add Expense'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Time Entry Modal */}
+      {showTimeModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold">Log Time</h3>
+              <button onClick={() => setShowTimeModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+            <form onSubmit={handleSaveTimeEntry} className="p-6 space-y-4">
+              {timeError && <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-sm rounded-lg px-4 py-3">{timeError}</div>}
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Date *</label>
+                <input type="date" value={timeForm.date_worked} onChange={e => setTimeForm({ ...timeForm, date_worked: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Hours *</label>
+                <input type="number" min="0.5" step="0.5" value={timeForm.hours} onChange={e => setTimeForm({ ...timeForm, hours: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="e.g. 2.5" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Description</label>
+                <input type="text" value={timeForm.description} onChange={e => setTimeForm({ ...timeForm, description: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" placeholder="e.g. Installation work" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowTimeModal(false)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+                <button type="submit" disabled={savingTime} className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                  {savingTime ? 'Saving...' : 'Log Time'}
                 </button>
               </div>
             </form>

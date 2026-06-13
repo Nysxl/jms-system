@@ -254,7 +254,7 @@ function ClientPortal({ session }: { session: PortalSession }) {
     logActivity(session, 'job_viewed', 'job', job.id, { title: job.title });
 
     const [{ data: n }, { data: i }] = await Promise.all([
-      supabase.from('job_notes').select('*').eq('job_id', job.id).order('created_at', { ascending: false }),
+      supabase.from('job_notes').select('*').eq('job_id', job.id).eq('is_internal', false).order('created_at', { ascending: false }),
       supabase.from('job_images').select('*').eq('job_id', job.id).order('uploaded_at', { ascending: false }),
     ]);
     if (n) setNotes(n);
@@ -270,6 +270,7 @@ function ClientPortal({ session }: { session: PortalSession }) {
       content: newNote.trim(),
       author_type: 'portal_user',
       portal_user_id: session.id,
+      is_internal: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }]);

@@ -415,7 +415,11 @@ export default function Inventory() {
                     const status = stockStatus(item);
                     return (
                       <tr key={item.id}
-                        className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition ${idx === filtered.length - 1 ? 'border-b-0' : ''}`}>
+                        className={`border-b border-slate-700/50 hover:bg-slate-700/30 transition ${
+                          item.quantity === 0 ? 'bg-red-950/30' :
+                          item.min_quantity && item.quantity <= item.min_quantity ? 'bg-yellow-950/30' :
+                          ''
+                        } ${idx === filtered.length - 1 ? 'border-b-0' : ''}`}>
                         <td className="px-4 py-3">
                           <p className="text-white font-medium">{item.name}</p>
                           {item.supplier && <p className="text-slate-500 text-xs">{item.supplier}</p>}
