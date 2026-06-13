@@ -24,16 +24,24 @@ export default function PortalInvoices() {
 
   const loadInvoices = async (customerId: string) => {
     setIsLoading(true);
-    const { data: subs } = await supabase
-      .from('customers').select('id').eq('contractor_id', customerId).eq('customer_type', 'sub_contact');
-    const customerIds = [customerId, ...(subs?.map((s: any) => s.id) || [])];
-    const { data } = await supabase
-      .from('invoices')
-      .select('*, job:jobs(title)')
-      .in('customer_id', customerIds)
-      .order('created_at', { ascending: false });
-    if (data) setInvoices(data);
-    setIsLoading(false);
+    try {
+      const { data: puRes } = await supabase
+        .from('portal_users').select('id').eq('customer_id', customerId).single();
+
+      if (!puRes) {
+        setInvoices([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const res = await fetch(`/api/portal/get-invoices?portalUserId=${puRes.id}`);
+      const json = await res.json();
+      if (json.invoices) setInvoices(json.invoices);
+    } catch (err) {
+      console.error('Failed to load invoices:', err);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const statusColor = (s: string) => {
