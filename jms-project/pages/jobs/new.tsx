@@ -45,11 +45,11 @@ export default function NewJob() {
       // For sub-contacts: only show the contractor and direct clients
       return customers.filter(c =>
         c.id === selectedCustomer.contractor_id ||
-        (c.customer_type === 'direct' && c.id !== selectedCustomer.id)
+        c.customer_type === 'direct'
       );
     }
-    // For direct contacts: only show direct clients (not sub-contacts)
-    return customers.filter(c => c.customer_type !== 'sub_contact' && c.id !== selectedCustomer.id);
+    // For direct contacts: show the selected client + other direct clients
+    return customers.filter(c => c.customer_type !== 'sub_contact');
   })().filter(c =>
     billingSearch === '' ||
     c.name.toLowerCase().includes(billingSearch.toLowerCase()) ||
