@@ -320,6 +320,17 @@ export default function Customers() {
       }]);
       if (error) { setPortalError(error.message); setIsSavingPortal(false); return; }
     }
+
+    // Create or update Supabase Auth user so they can log into the portal
+    await fetch('/api/portal/create-auth-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: portalForm.email.trim().toLowerCase(),
+        password: portalForm.password,
+      }),
+    });
+
     setIsSavingPortal(false);
     setShowPortalModal(false);
     await loadPortalUsers();
