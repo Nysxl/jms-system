@@ -39,10 +39,15 @@ export default function PortalJobs() {
       setPortalUser(pu);
 
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) { router.push('/portal/login'); return; }
+      if (!session) {
+        localStorage.removeItem('portal_session');
+        router.push('/portal/login');
+        return;
+      }
 
       loadData(pu.customer_id);
     } catch (err) {
+      localStorage.removeItem('portal_session');
       router.push('/portal/login');
     }
   };
