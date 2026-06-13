@@ -59,7 +59,15 @@ export default function PortalJobDetail() {
   const loadJobData = async () => {
     setIsLoading(true);
     const { data: jobData } = await supabase.from('jobs').select('*').eq('id', id).single();
-    if (jobData) setJob(jobData);
+    if (jobData) {
+      setJob(jobData);
+      // Fetch admin's company name
+      const { data: companyData } = await supabase
+        .from('company_settings').select('company_name').eq('user_id', jobData.user_id).single();
+      if (companyData?.company_name) {
+        setJob(j => ({ ...j, admin_company_name: companyData.company_name }));
+      }
+    }
     const { data: notesData } = await supabase.from('job_notes').select('*').eq('job_id', id).order('created_at', { ascending: false });
     if (notesData) setNotes(notesData);
     const { data: imagesData } = await supabase.from('job_images').select('*').eq('job_id', id).order('uploaded_at', { ascending: false });
@@ -315,7 +323,7 @@ export default function PortalJobDetail() {
           {/* Admin Photos */}
           {adminImages.length > 0 && (
             <div className="mt-6 pt-6 border-t border-slate-700">
-              <h4 className="text-slate-300 font-medium text-sm mb-3">📸 Shared Photos</h4>
+              <h4 className="text-slate-300 font-medium text-sm mb-3">📸 {(job as any)?.admin_company_name || 'Admin'} Photos</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {adminImages.filter(img => !(img.is_internal as any)).map(img => (
                   <img key={img.id} src={img.image_url} alt={img.file_name} className="rounded-lg w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
@@ -343,7 +351,7 @@ export default function PortalJobDetail() {
           {/* Admin Attachments */}
           {attachments.filter((att: any) => att.author_type === 'admin').length > 0 && (
             <div className="mt-6 pt-6 border-t border-slate-700">
-              <h4 className="text-slate-300 font-medium text-sm mb-3">📎 Shared Documents</h4>
+              <h4 className="text-slate-300 font-medium text-sm mb-3">📎 {(job as any)?.admin_company_name || 'Admin'} Documents</h4>
               <div className="space-y-2">
                 {attachments.filter((att: any) => att.author_type === 'admin' && !(att.is_internal as any)).map(att => (
                   <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
@@ -387,7 +395,7 @@ export default function PortalJobDetail() {
 
         {/* Admin Notes (Read-only for customer) */}
         <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 mb-6">
-          <h3 className="text-slate-400 font-semibold mb-4">📝 Admin Notes</h3>
+          <h3 className="text-slate-400 font-semibold mb-4">📝 {(job as any)?.admin_company_name || 'Admin'} Notes</h3>
           {adminNotes.length === 0 ? (
             <p className="text-slate-500 text-sm text-center py-4">No admin notes yet</p>
           ) : (
