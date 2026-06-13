@@ -12,7 +12,7 @@ export default function PortalLogin() {
   useEffect(() => {
     const session = localStorage.getItem('portal_session');
     if (session) router.push('/portal/jobs');
-  }, [router]);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
