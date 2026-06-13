@@ -9,6 +9,8 @@ export default function PortalInvoices() {
   const [portalUser, setPortalUser] = useState<PortalUser | null>(null);
   const [invoices, setInvoices] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
 
   useEffect(() => { checkSession(); }, []);
 
@@ -41,6 +43,16 @@ export default function PortalInvoices() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const openInvoice = async (invoice: any) => {
+    setSelectedInvoice(invoice);
+    const { data } = await supabase
+      .from('invoice_items')
+      .select('*')
+      .eq('invoice_id', invoice.id)
+      .order('created_at', { ascending: true });
+    setInvoiceItems(data || []);
   };
 
   const statusColor = (s: string) => {
@@ -98,19 +110,97 @@ export default function PortalInvoices() {
                         </p>
                       )}
                     </div>
-                    <div className="text-right">
-                      <p className="text-white font-bold text-lg">${(inv.total_amount || 0).toFixed(2)}</p>
-                      {inv.amount_paid > 0 && inv.status !== 'paid' && (
-                        <p className="text-orange-400 text-sm">Owing: ${outstanding.toFixed(2)}</p>
-                      )}
-                      {inv.status === 'paid' && (
-                        <p className="text-green-400 text-xs mt-1">✓ Paid {inv.paid_date ? new Date(inv.paid_date).toLocaleDateString() : ''}</p>
-                      )}
+                    <div className="text-right flex flex-col items-end gap-2">
+                      <div>
+                        <p className="text-white font-bold text-lg">${(inv.total_amount || 0).toFixed(2)}</p>
+                        {inv.amount_paid > 0 && inv.status !== 'paid' && (
+                          <p className="text-orange-400 text-sm">Owing: ${outstanding.toFixed(2)}</p>
+                        )}
+                        {inv.status === 'paid' && (
+                          <p className="text-green-400 text-xs mt-1">✓ Paid {inv.paid_date ? new Date(inv.paid_date).toLocaleDateString() : ''}</p>
+                        )}
+                      </div>
+                      <button onClick={() => openInvoice(inv)} className="text-blue-400 hover:text-blue-300 text-xs font-medium transition">
+                        View Details
+                      </button>
                     </div>
                   </div>
                 </div>
               );
             })}
+          </div>
+        )}
+
+        {selectedInvoice && (
+          <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+            <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+              <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700 sticky top-0 bg-slate-800">
+                <h3 className="text-white font-semibold">{selectedInvoice.invoice_number}</h3>
+                <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white transition">✕</button>
+              </div>
+              <div className="p-6 space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-slate-400 text-sm">Status</p>
+                    <p className="text-white font-semibold capitalize">{selectedInvoice.status}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">Due Date</p>
+                    <p className="text-white font-semibold">{selectedInvoice.due_date ? new Date(selectedInvoice.due_date).toLocaleDateString() : '—'}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">Total Amount</p>
+                    <p className="text-white font-semibold">${(selectedInvoice.total_amount || 0).toFixed(2)}</p>
+                  </div>
+                  <div>
+                    <p className="text-slate-400 text-sm">Amount Paid</p>
+                    <p className="text-green-400 font-semibold">${(selectedInvoice.amount_paid || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                {invoiceItems.length > 0 && (
+                  <div>
+                    <h4 className="text-white font-semibold mb-3">Line Items</h4>
+                    <div className="space-y-2">
+                      {invoiceItems.map((item: any) => (
+                        <div key={item.id} className="bg-slate-900 rounded p-3 flex justify-between">
+                          <div className="flex-1">
+                            <p className="text-white text-sm">{item.description}</p>
+                            <p className="text-slate-400 text-xs">Qty: {item.quantity}</p>
+                          </div>
+                          <p className="text-white font-semibold text-right">
+                            ${(item.total || 0).toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t border-slate-700 pt-4">
+                  <div className="flex justify-between mb-2">
+                    <p className="text-slate-400">Subtotal</p>
+                    <p className="text-white">${(selectedInvoice.subtotal || 0).toFixed(2)}</p>
+                  </div>
+                  {selectedInvoice.tax_amount > 0 && (
+                    <div className="flex justify-between mb-2">
+                      <p className="text-slate-400">Tax</p>
+                      <p className="text-white">${(selectedInvoice.tax_amount || 0).toFixed(2)}</p>
+                    </div>
+                  )}
+                  <div className="flex justify-between pt-2 border-t border-slate-700">
+                    <p className="text-white font-semibold">Total</p>
+                    <p className="text-white font-bold text-lg">${(selectedInvoice.total_amount || 0).toFixed(2)}</p>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button onClick={() => setSelectedInvoice(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </main>
