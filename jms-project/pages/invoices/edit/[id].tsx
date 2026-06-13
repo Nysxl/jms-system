@@ -71,6 +71,23 @@ export default function EditInvoice() {
     setItems(updated);
   };
 
+  const addItem = () => {
+    const newItem: InvoiceItem = {
+      id: '',
+      invoice_id: invoice!.id,
+      description: '',
+      quantity: 1,
+      unit_price: 0,
+      total: 0,
+    };
+    setItems([...items, newItem]);
+  };
+
+  const deleteItem = (idx: number) => {
+    const updated = items.filter((_, i) => i !== idx);
+    setItems(updated);
+  };
+
   const saveChanges = async () => {
     if (!invoice) return;
     setIsSaving(true);
@@ -89,12 +106,24 @@ export default function EditInvoice() {
       }).eq('id', id);
 
       for (const item of items) {
-        await supabase.from('invoice_items').update({
-          description: item.description,
-          quantity: item.quantity,
-          unit_price: item.unit_price,
-          total: item.total,
-        }).eq('id', item.id);
+        if (item.id) {
+          // Update existing item
+          await supabase.from('invoice_items').update({
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total,
+          }).eq('id', item.id);
+        } else {
+          // Insert new item
+          await supabase.from('invoice_items').insert({
+            invoice_id: invoice!.id,
+            description: item.description,
+            quantity: item.quantity,
+            unit_price: item.unit_price,
+            total: item.total,
+          });
+        }
       }
 
       alert('Invoice updated successfully');
@@ -152,36 +181,54 @@ export default function EditInvoice() {
           </div>
 
           {/* Line Items */}
-          <div className="mb-8 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-700">
-                  <th className="text-left text-slate-400 font-medium pb-3">Description</th>
-                  <th className="text-right text-slate-400 font-medium pb-3 px-4">Qty</th>
-                  <th className="text-right text-slate-400 font-medium pb-3 px-4">Unit Price</th>
-                  <th className="text-right text-slate-400 font-medium pb-3">Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item, idx) => (
-                  <tr key={item.id} className="border-b border-slate-700">
-                    <td className="py-3">
-                      <input type="text" value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm" />
-                    </td>
-                    <td className="px-4">
-                      <input type="number" value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm text-right" />
-                    </td>
-                    <td className="px-4">
-                      <input type="number" value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)}
-                        className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm text-right" step="0.01" />
-                    </td>
-                    <td className="text-right py-3 text-white font-medium">${item.total.toFixed(2)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-white font-semibold">Line Items</h3>
+              <button onClick={addItem}
+                className="bg-slate-700 hover:bg-slate-600 text-white text-sm px-3 py-1.5 rounded transition">
+                + Add Item
+              </button>
+            </div>
+            {items.length === 0 ? (
+              <p className="text-slate-400 text-sm text-center py-8">No items. Click "Add Item" to start.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-700">
+                      <th className="text-left text-slate-400 font-medium pb-3">Description</th>
+                      <th className="text-right text-slate-400 font-medium pb-3 px-4">Qty</th>
+                      <th className="text-right text-slate-400 font-medium pb-3 px-4">Unit Price</th>
+                      <th className="text-right text-slate-400 font-medium pb-3">Total</th>
+                      <th className="w-8"></th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {items.map((item, idx) => (
+                      <tr key={idx} className="border-b border-slate-700">
+                        <td className="py-3">
+                          <input type="text" value={item.description} onChange={e => handleItemChange(idx, 'description', e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm" />
+                        </td>
+                        <td className="px-4">
+                          <input type="number" value={item.quantity} onChange={e => handleItemChange(idx, 'quantity', e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm text-right" />
+                        </td>
+                        <td className="px-4">
+                          <input type="number" value={item.unit_price} onChange={e => handleItemChange(idx, 'unit_price', e.target.value)}
+                            className="w-full bg-slate-900 border border-slate-600 text-white rounded px-2 py-1 text-sm text-right" step="0.01" />
+                        </td>
+                        <td className="text-right py-3 text-white font-medium">${item.total.toFixed(2)}</td>
+                        <td className="text-center">
+                          <button onClick={() => deleteItem(idx)}
+                            className="text-red-400 hover:text-red-300 text-sm transition">✕</button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           {/* Totals */}
