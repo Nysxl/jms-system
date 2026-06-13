@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { Header } from '@/components/Header';
 import { supabase } from '@/lib/supabase';
-import { Quotation, Customer } from '@/lib/types';
+import { Quotation } from '@/lib/types';
 import { format } from 'date-fns';
 
 export default function Quotations() {
