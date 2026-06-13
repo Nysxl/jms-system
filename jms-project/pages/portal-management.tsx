@@ -107,7 +107,7 @@ export default function PortalManagement() {
       // Create or update Supabase Auth user
       try {
         // Try to create auth user
-        const { data: signUpData, error: signUpError } = await supabase.auth.admin.createUser({
+        const { data: _signUpData, error: signUpError } = await supabase.auth.admin.createUser({
           email: editForm.email.trim().toLowerCase(),
           password: editForm.password,
           email_confirm: true,
