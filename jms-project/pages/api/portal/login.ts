@@ -23,27 +23,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const cleanEmail = email.trim().toLowerCase();
     console.log('Clean email:', cleanEmail);
 
-    console.log('Creating Supabase clients...');
+    console.log('Creating Supabase client...');
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-    console.log('Env var values:', {
-      url: url ? url.substring(0, 20) + '...' : 'MISSING',
-      anonKey: anonKey ? anonKey.substring(0, 20) + '...' : 'MISSING',
-      serviceKey: serviceKey ? serviceKey.substring(0, 20) + '...' : 'MISSING',
-    });
-
-    if (!url || !anonKey || !serviceKey) {
+    if (!url || !anonKey) {
       console.error('CRITICAL: Missing environment variables');
       return res.status(500).json({
         error: 'Server configuration error',
-        available: { url: !!url, anonKey: !!anonKey, serviceKey: !!serviceKey }
+        available: { url: !!url, anonKey: !!anonKey }
       });
     }
 
     const supabaseAnon = createClient(url, anonKey);
-    const supabaseAdmin = createClient(url, serviceKey);
 
     // Authenticate via Supabase Auth
     console.log('Attempting Supabase Auth signInWithPassword...');
@@ -61,38 +53,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log('Auth successful, user ID:', authData.user.id);
 
-    // Get portal user details
-    const { data: portalUser, error: portalError } = await supabaseAdmin
+    // Set the authenticated session on the anon client to use for subsequent queries
+    await supabaseAnon.auth.setSession(authData.session);
+
+    // Get portal user details using authenticated client (RLS will check auth.uid() = user_id)
+    const { data: portalUser, error: portalError } = await supabaseAnon
       .from('portal_users')
       .select('*, customer:customers(*)')
       .eq('email', cleanEmail)
       .eq('is_active', 1)
       .maybeSingle();
 
+    console.log('Portal user query:', { found: !!portalUser, error: portalError?.message });
+
     if (portalError || !portalUser) {
+      console.error('Portal user not found:', portalError?.message);
       return res.status(401).json({ error: 'Portal user not found.' });
     }
 
+    // Try to update last_login and log activity (may fail if no service key, but login still succeeds)
     try {
-      await supabaseAdmin
+      await supabaseAnon
         .from('portal_users')
         .update({ last_login: new Date().toISOString() })
         .eq('id', portalUser.id);
+      console.log('Updated last_login');
     } catch (e) {
-      console.error('Failed to update last_login:', e);
+      console.error('Failed to update last_login (non-critical):', e);
     }
 
     try {
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '';
-      await supabaseAdmin.from('portal_activity_log').insert([{
+      await supabaseAnon.from('portal_activity_log').insert([{
         portal_user_id: portalUser.id,
         user_id: portalUser.user_id,
         action_type: 'login',
         ip_address: ip,
         created_at: new Date().toISOString(),
       }]);
+      console.log('Logged activity');
     } catch (e) {
-      console.error('Failed to log activity:', e);
+      console.error('Failed to log activity (non-critical):', e);
     }
 
     return res.status(200).json({
