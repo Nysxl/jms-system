@@ -16,6 +16,7 @@ const emptyForm = {
   supplier: '',
   location: '',
   notes: '',
+  is_stock_item: true,
 };
 
 const txnForm = {
@@ -167,6 +168,7 @@ export default function Inventory() {
       supplier: item.supplier || '',
       location: item.location || '',
       notes: item.notes || '',
+      is_stock_item: item.is_stock_item ?? true,
     });
     setFormError('');
     setShowItemModal(true);
@@ -193,6 +195,7 @@ export default function Inventory() {
       supplier: form.supplier,
       location: form.location,
       notes: form.notes,
+      is_stock_item: form.is_stock_item,
       updated_at: new Date().toISOString(),
     };
 
@@ -525,6 +528,23 @@ export default function Inventory() {
                   <label className="block text-slate-300 text-sm font-medium mb-1">Notes</label>
                   <textarea value={form.notes} onChange={e => setForm({ ...form, notes: e.target.value })} rows={2}
                     placeholder="Additional notes..." className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition resize-none" />
+                </div>
+                <div className="sm:col-span-2">
+                  <div className="flex items-center gap-3 p-4 bg-slate-700/50 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="is_stock_item"
+                      checked={form.is_stock_item}
+                      onChange={e => setForm({ ...form, is_stock_item: e.target.checked })}
+                      className="w-4 h-4 rounded"
+                    />
+                    <label htmlFor="is_stock_item" className="text-white text-sm font-medium">
+                      Tracked stock item
+                      <p className="text-slate-400 text-xs mt-0.5">
+                        {form.is_stock_item ? 'This item tracks quantity in stock' : 'This is a service/callout item (no stock tracking)'}
+                      </p>
+                    </label>
+                  </div>
                 </div>
               </div>
 

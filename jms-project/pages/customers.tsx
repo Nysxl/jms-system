@@ -263,7 +263,7 @@ export default function Customers() {
         ...payload,
         user_id: userId,
         customer_id: portalCustomer!.id,
-        is_active: true,
+        is_active: 1,
         created_at: new Date().toISOString(),
       }]);
       if (error) { setPortalError(error.message); setIsSavingPortal(false); return; }
@@ -274,7 +274,7 @@ export default function Customers() {
   };
 
   const togglePortalActive = async (pu: PortalUser) => {
-    await supabase.from('portal_users').update({ is_active: !pu.is_active }).eq('id', pu.id);
+    await supabase.from('portal_users').update({ is_active: pu.is_active ? 0 : 1 }).eq('id', pu.id);
     loadPortalUsers();
   };
 
@@ -379,8 +379,8 @@ export default function Customers() {
                         {c.company_name && <p className="text-slate-400 text-xs truncate">{c.company_name}</p>}
                       </div>
                       {pu && (
-                        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${pu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
-                          {pu.is_active ? 'Portal active' : 'Portal off'}
+                        <span className={`ml-auto text-xs px-2 py-0.5 rounded-full ${pu.is_active === 1 ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
+                          {pu.is_active === 1 ? 'Portal active' : 'Portal off'}
                         </span>
                       )}
                     </div>
@@ -437,8 +437,8 @@ export default function Customers() {
                         <p className="text-slate-400 text-sm">{subs.length} sub-contact{subs.length !== 1 ? 's' : ''}{contractor.email ? ` · ${contractor.email}` : ''}</p>
                       </div>
                       {pu && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${pu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
-                          {pu.is_active ? 'Portal active' : 'Portal off'}
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${pu.is_active === 1 ? 'bg-green-500/20 text-green-400' : 'bg-slate-700 text-slate-400'}`}>
+                          {pu.is_active === 1 ? 'Portal active' : 'Portal off'}
                         </span>
                       )}
                       <div className="flex gap-2 flex-shrink-0">
@@ -652,7 +652,7 @@ export default function Customers() {
                   <div className="flex justify-between items-center">
                     <span className="text-slate-400">Status</span>
                     <span className={editingPortalUser.is_active ? 'text-green-400' : 'text-slate-400'}>
-                      {editingPortalUser.is_active ? 'Active' : 'Disabled'}
+                      {editingPortalUser.is_active === 1 ? 'Active' : 'Disabled'}
                     </span>
                   </div>
                   {editingPortalUser.last_login && (
@@ -663,9 +663,9 @@ export default function Customers() {
                   )}
                   <button
                     onClick={() => { togglePortalActive(editingPortalUser); setShowPortalModal(false); }}
-                    className={`mt-3 w-full text-sm font-medium py-1.5 rounded-lg transition ${editingPortalUser.is_active ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
+                    className={`mt-3 w-full text-sm font-medium py-1.5 rounded-lg transition ${editingPortalUser.is_active === 1 ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400' : 'bg-green-500/10 hover:bg-green-500/20 text-green-400'}`}
                   >
-                    {editingPortalUser.is_active ? 'Disable portal access' : 'Enable portal access'}
+                    {editingPortalUser.is_active === 1 ? 'Disable portal access' : 'Enable portal access'}
                   </button>
                 </div>
               )}

@@ -106,6 +106,7 @@ export default function JobDetail() {
   const [writeInDesc, setWriteInDesc] = useState('');
   const [lineQty, setLineQty] = useState('1');
   const [linePrice, setLinePrice] = useState('');
+  const [linePriceIsOverride, setLinePriceIsOverride] = useState(false);
   const [savingLineItem, setSavingLineItem] = useState(false);
   const [lineItemError, setLineItemError] = useState('');
   const [gstEnabled, setGstEnabled] = useState(false);
@@ -276,15 +277,28 @@ export default function JobDetail() {
     setWriteInDesc('');
     setLineQty('1');
     setLinePrice('');
+    setLinePriceIsOverride(false);
     setLineItemError('');
     setInventorySearch('');
     setShowLineItemModal(true);
   };
 
-  const handleInventorySelect = (invId: string) => {
+  const handleInventorySelect = async (invId: string) => {
     setSelectedInventoryId(invId);
+    setLinePriceIsOverride(false);
     const inv = inventoryItems.find(i => i.id === invId);
-    if (inv) setLinePrice((inv.unit_price || inv.unit_cost || 0).toString());
+    if (inv && job?.customer_id) {
+      // Fetch the price (override or standard) for this customer
+      try {
+        const res = await fetch(`/api/pricing?customerId=${job.customer_id}&inventoryId=${invId}`);
+        const data = await res.json();
+        setLinePrice((data.price || inv.unit_price || inv.unit_cost || 0).toString());
+        if (data.isOverride) setLinePriceIsOverride(true);
+      } catch (err) {
+        // Fallback to standard price
+        setLinePrice((inv.unit_price || inv.unit_cost || 0).toString());
+      }
+    }
   };
 
   const handleSaveLineItem = async (e: React.FormEvent) => {
@@ -829,10 +843,15 @@ export default function JobDetail() {
                     className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
                 </div>
                 <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Unit Price ($)</label>
-                  <input type="number" min="0" step="0.01" value={linePrice} onChange={e => setLinePrice(e.target.value)}
+                  <div className="flex items-center justify-between">
+                    <label className="block text-slate-300 text-sm font-medium">Unit Price ($)</label>
+                    {linePriceIsOverride && (
+                      <span className="text-xs bg-blue-500/20 text-blue-300 px-2 py-0.5 rounded">Custom Price</span>
+                    )}
+                  </div>
+                  <input type="number" min="0" step="0.01" value={linePrice} onChange={e => { setLinePrice(e.target.value); setLinePriceIsOverride(false); }}
                     placeholder="0.00"
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition" />
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition mt-1" />
                 </div>
               </div>
 

@@ -79,7 +79,7 @@ export default function PortalManagement() {
   }, []);
 
   const toggleActive = async (pu: PortalUser) => {
-    await supabase.from('portal_users').update({ is_active: !pu.is_active }).eq('id', pu.id);
+    await supabase.from('portal_users').update({ is_active: pu.is_active ? 0 : 1 }).eq('id', pu.id);
     loadData(userId);
   };
 
@@ -170,8 +170,8 @@ export default function PortalManagement() {
                           <p className="text-white font-medium text-sm truncate">{pu.customer?.company_name || pu.customer?.name || '—'}</p>
                           <p className="text-slate-400 text-xs truncate">{pu.email}</p>
                         </div>
-                        <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${pu.is_active ? 'bg-green-500/20 text-green-400' : 'bg-slate-600 text-slate-400'}`}>
-                          {pu.is_active ? 'Active' : 'Off'}
+                        <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${pu.is_active === 1 ? 'bg-green-500/20 text-green-400' : 'bg-slate-600 text-slate-400'}`}>
+                          {pu.is_active === 1 ? 'Active' : 'Off'}
                         </span>
                       </div>
 

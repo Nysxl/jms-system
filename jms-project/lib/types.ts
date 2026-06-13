@@ -169,6 +169,7 @@ export interface InventoryItem {
   supplier?: string;
   location?: string;
   notes?: string;
+  is_stock_item: boolean; // true = tracked stock, false = service/callout item
   created_at: string;
   updated_at: string;
 }
@@ -203,7 +204,7 @@ export interface PortalUser {
   customer_id: string;
   email: string;
   password_plain: string; // stored for admin visibility
-  is_active: boolean;
+  is_active: number; // 1 or 0 (SQLite uses INTEGER for booleans)
   last_login?: string;
   customer?: Customer;
   created_at: string;
