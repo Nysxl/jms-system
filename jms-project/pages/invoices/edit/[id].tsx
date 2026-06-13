@@ -58,6 +58,7 @@ export default function EditInvoice() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [showPreview, setShowPreview] = useState(true);
   const [editForm, setEditForm] = useState({ status: '', due_date: '', notes: '' });
 
   useEffect(() => {
@@ -234,7 +235,7 @@ export default function EditInvoice() {
       <main className="mx-auto px-6 py-8">
         <Link href={`/jobs/${invoice.job_id}`} className="text-slate-400 hover:text-slate-300 text-sm mb-4 inline-block">← Back to Job</Link>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className={`grid gap-6 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
           {/* Edit Form */}
           <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
           <h1 className="text-3xl font-bold text-white mb-2">{invoice.invoice_number}</h1>
@@ -335,10 +336,14 @@ export default function EditInvoice() {
             </div>
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex gap-3 flex-wrap">
             <button onClick={saveChanges} disabled={isSaving}
               className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
               {isSaving ? 'Saving...' : 'Save Changes'}
+            </button>
+            <button onClick={() => setShowPreview(!showPreview)}
+              className="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-3 rounded-lg transition">
+              {showPreview ? '👁️ Hide Preview' : '👁️ Show Preview'}
             </button>
             <button onClick={() => setDeleteConfirm(true)}
               className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold px-6 py-3 rounded-lg transition">
@@ -348,7 +353,7 @@ export default function EditInvoice() {
           </div>
 
           {/* Print Preview */}
-          {job && customer && company && (
+          {showPreview && job && customer && company && (
             <div className="bg-white rounded-xl overflow-hidden shadow-lg flex flex-col">
               <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
                 <button onClick={() => window.print()}
