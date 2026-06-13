@@ -100,8 +100,15 @@ export default function Jobs() {
   };
 
   // ── Helpers
-  const customerName = (id: string) =>
-    customers.find(c => c.id === id)?.name || '—';
+  const customerName = (id: string) => {
+    const c = customers.find(c => c.id === id);
+    if (!c) return '—';
+    if (c.customer_type === 'sub_contact' && c.contractor_id) {
+      const contractor = customers.find(p => p.id === c.contractor_id);
+      return contractor ? `${contractor.name} (${c.name})` : c.name;
+    }
+    return c.name;
+  };
 
   const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'short', year: 'numeric' }) : '—';

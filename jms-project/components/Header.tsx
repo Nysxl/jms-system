@@ -1,10 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { supabase } from '@/lib/supabase';
 
 export const Header: React.FC<{ username?: string }> = ({ username }) => {
-  const [_menuOpen, _setMenuOpen] = useState(false);
   const router = useRouter();
 
   const handleSignOut = async () => {
