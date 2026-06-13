@@ -25,13 +25,9 @@ export default function PortalInvoices() {
   const loadInvoices = async (portalUserId: string) => {
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/portal/get-invoices?portalUserId=${portalUserId}`);
+      const res = await fetch(`/api/portal/get-data?portalUserId=${portalUserId}`);
       const json = await res.json();
-      console.log('Portal invoices response:', json);
-      if (json.error) {
-        console.error('API error:', json.error);
-        setInvoices([]);
-      } else if (json.invoices) {
+      if (json.invoices) {
         setInvoices(json.invoices);
       }
     } catch (err) {
