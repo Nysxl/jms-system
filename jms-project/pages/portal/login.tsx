@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import axios from 'axios';
 import { supabase } from '@/lib/supabase';
 
 export default function PortalLogin() {
@@ -21,7 +20,18 @@ export default function PortalLogin() {
     if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
     setIsLoading(true);
     try {
-      const { data } = await axios.post('/api/portal/login', { email: email.trim().toLowerCase(), password });
+      const res = await fetch('/api/portal/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || 'Login failed');
+      }
+
+      const data = await res.json();
       localStorage.setItem('portal_session', JSON.stringify(data.portal_user));
 
       // Set the session in Supabase client
@@ -29,9 +39,9 @@ export default function PortalLogin() {
         await supabase.auth.setSession(data.session);
       }
 
-      router.push('/portal/dashboard');
+      router.push('/portal/jobs');
     } catch (err: any) {
-      setError(err.response?.data?.error || 'Login failed. Please try again.');
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);
     }
