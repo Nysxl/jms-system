@@ -56,24 +56,30 @@ export default function PortalJobDetail() {
 
   const handleAddNote = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNote.trim() || !portalUser || !job) return;
+    if (!newNote.trim() || !job) return;
 
     setSavingNote(true);
     try {
-      const res = await fetch('/api/portal/add-note', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ portalUserId: portalUser.id, jobId: job.id, content: newNote }),
-      });
-      const data = await res.json();
-      if (res.ok && data.note) {
-        setNotes([data.note, ...notes]);
-        setNewNote('');
-      } else {
-        alert('Failed to add note: ' + (data.error || 'Unknown error'));
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Not authenticated');
+        return;
       }
-    } catch (err) {
-      console.error('Error adding note:', err);
+
+      const { data, error } = await supabase.from('job_notes').insert({
+        job_id: job.id,
+        user_id: user.id,
+        content: newNote,
+        author_type: 'portal_user',
+      }).select().single();
+
+      if (error) throw error;
+      if (data) {
+        setNotes([data, ...notes]);
+        setNewNote('');
+      }
+    } catch (err: any) {
+      alert('Failed to add note: ' + (err.message || 'Unknown error'));
     } finally {
       setSavingNote(false);
     }
@@ -81,11 +87,17 @@ export default function PortalJobDetail() {
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files;
-    if (!files || !portalUser || !job) return;
+    if (!files || !job) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      alert('Not authenticated');
+      return;
+    }
 
     for (const file of Array.from(files)) {
       try {
-        const fileName = `portal_${portalUser.id}_${Date.now()}_${file.name}`;
+        const fileName = `portal_${user.id}_${Date.now()}_${file.name}`;
         const { data, error } = await supabase.storage
           .from('job-attachments')
           .upload(fileName, file);
@@ -95,18 +107,16 @@ export default function PortalJobDetail() {
             .from('job-attachments')
             .getPublicUrl(fileName);
 
-          await fetch('/api/portal/add-photo', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              portalUserId: portalUser.id,
-              jobId: job.id,
-              imageUrl: publicUrl,
-              fileName: file.name,
-            }),
-          });
+          const { data: imgData, error: imgError } = await supabase.from('job_images').insert({
+            job_id: job.id,
+            user_id: user.id,
+            image_url: publicUrl,
+            file_name: file.name,
+            author_type: 'portal_user',
+          }).select().single();
 
-          setImages([...images, { id: Date.now().toString(), job_id: job.id, user_id: portalUser.user_id, image_url: publicUrl, file_name: file.name, author_type: 'portal_user', uploaded_at: new Date().toISOString() }]);
+          if (imgError) throw imgError;
+          if (imgData) setImages([...images, imgData]);
         }
       } catch (err) {
         console.error('Upload error:', err);
