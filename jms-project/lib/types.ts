@@ -90,6 +90,8 @@ export interface JobImage {
   display_timestamp?: string; // overridable; falls back to uploaded_at
   author_type: 'admin' | 'portal_user';
   portal_user_id?: string;
+  uploader_email?: string;
+  is_internal?: boolean; // true = hidden from portal users
   uploaded_at: string;
 }
 
