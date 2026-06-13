@@ -18,6 +18,8 @@ export default function InvoicesPage() {
   const [paymentForm, setPaymentForm] = useState({ amount_paid: '', payment_method: '', paid_date: '', payment_notes: '' });
   const [savingPayment, setSavingPayment] = useState(false);
   const [paymentError, setPaymentError] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -71,6 +73,20 @@ export default function InvoicesPage() {
     setSavingPayment(false);
     setShowPaymentModal(false);
     loadInvoices();
+  };
+
+  const handleDelete = async (invoiceId: string) => {
+    setIsDeleting(true);
+    try {
+      await supabase.from('invoice_items').delete().eq('invoice_id', invoiceId);
+      await supabase.from('invoices').delete().eq('id', invoiceId);
+      setDeleteConfirm(null);
+      loadInvoices();
+    } catch (err) {
+      alert('Failed to delete invoice');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const filtered = invoices.filter(inv => {
@@ -174,10 +190,20 @@ export default function InvoicesPage() {
                           </span>
                         </td>
                         <td className="px-4 py-3">
-                          <button onClick={() => openPaymentModal(inv)}
-                            className="text-blue-400 hover:text-blue-300 text-xs font-medium transition">
-                            {inv.status === 'paid' ? 'Update' : 'Mark Paid'}
-                          </button>
+                          <div className="flex gap-2">
+                            <button onClick={() => router.push(`/invoices/edit/${inv.id}`)}
+                              className="text-slate-300 hover:text-white text-xs font-medium transition">
+                              ✏️ Open
+                            </button>
+                            <button onClick={() => openPaymentModal(inv)}
+                              className="text-blue-400 hover:text-blue-300 text-xs font-medium transition">
+                              {inv.status === 'paid' ? 'Update' : 'Mark Paid'}
+                            </button>
+                            <button onClick={() => setDeleteConfirm(inv.id)}
+                              className="text-red-400 hover:text-red-300 text-xs font-medium transition">
+                              🗑️ Delete
+                            </button>
+                          </div>
                         </td>
                       </tr>
                     );
@@ -234,6 +260,23 @@ export default function InvoicesPage() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 w-full max-w-sm text-center">
+            <p className="text-4xl mb-4">⚠️</p>
+            <h3 className="text-white font-semibold text-lg mb-2">Delete Invoice?</h3>
+            <p className="text-slate-400 text-sm mb-6">This action cannot be undone. The invoice and all its line items will be permanently deleted.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+              <button onClick={() => handleDelete(deleteConfirm)} disabled={isDeleting} className="flex-1 bg-red-500 hover:bg-red-600 disabled:opacity-50 text-white font-medium py-2 rounded-lg transition">
+                {isDeleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
           </div>
         </div>
       )}
