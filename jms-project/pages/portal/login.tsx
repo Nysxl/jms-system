@@ -17,30 +17,52 @@ export default function PortalLogin() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!email.trim() || !password.trim()) { setError('Email and password are required.'); return; }
+    console.log('=== PORTAL LOGIN ATTEMPT ===');
+    console.log('Email:', email.trim().toLowerCase());
+    console.log('Password length:', password.length);
+
+    if (!email.trim() || !password.trim()) {
+      setError('Email and password are required.');
+      return;
+    }
+
     setIsLoading(true);
     try {
+      console.log('Sending login request to /api/portal/login');
       const res = await fetch('/api/portal/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
+      console.log('Response status:', res.status);
+      console.log('Response headers:', res.headers);
+
       if (!res.ok) {
+        console.log('Response not OK, parsing error');
         const errorData = await res.json();
+        console.log('Error data:', errorData);
         throw new Error(errorData.error || 'Login failed');
       }
 
       const data = await res.json();
+      console.log('Success response:', { success: data.success, portalUser: data.portal_user, hasSession: !!data.session });
+
       localStorage.setItem('portal_session', JSON.stringify(data.portal_user));
+      console.log('Stored portal session');
 
       // Set the session in Supabase client
       if (data.session) {
+        console.log('Setting Supabase session');
         await supabase.auth.setSession(data.session);
       }
 
+      console.log('Redirecting to /portal/jobs');
       router.push('/portal/jobs');
     } catch (err: any) {
+      console.error('Login error:', err);
+      console.error('Error message:', err.message);
+      console.error('Error stack:', err.stack);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setIsLoading(false);

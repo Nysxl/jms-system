@@ -3,24 +3,41 @@ import { supabase, getAdminClient } from '@/lib/supabase';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
+    console.log('=== PORTAL LOGIN API ===');
+    console.log('Method:', req.method);
+
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const supabaseAdmin = getAdminClient();
     const { email, password } = req.body;
-    if (!email || !password) return res.status(400).json({ error: 'Email and password are required.' });
+    console.log('Request body:', { email: email ? email.substring(0, 3) + '...' : 'missing', passwordLen: password?.length || 0 });
+
+    if (!email || !password) {
+      console.log('Missing email or password');
+      return res.status(400).json({ error: 'Email and password are required.' });
+    }
 
     const cleanEmail = email.trim().toLowerCase();
+    console.log('Clean email:', cleanEmail);
+
+    console.log('Getting admin client...');
+    const supabaseAdmin = getAdminClient();
+    console.log('Admin client created');
 
     // Authenticate via Supabase Auth
+    console.log('Attempting Supabase Auth signInWithPassword...');
     const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
       email: cleanEmail,
       password,
     });
 
+    console.log('Auth response:', { authError: authError?.message, userExists: !!authData?.user });
+
     if (authError || !authData.user) {
       console.error('Auth failed:', authError?.message);
       return res.status(401).json({ error: 'Invalid email or password.' });
     }
+
+    console.log('Auth successful, user ID:', authData.user.id);
 
     // Get portal user details
     const { data: portalUser, error: portalError } = await supabaseAdmin
