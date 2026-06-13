@@ -34,7 +34,7 @@ export default function NewQuotation() {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (!session) { router.push('/login'); return; }
       supabase.from('customers').select('id, name, company_name, customer_type').order('name').then(({ data }) => {
-        if (data) setCustomers(data);
+        if (data) setCustomers(data as any);
       });
     });
   }, [router]);
