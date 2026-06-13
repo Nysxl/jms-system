@@ -240,6 +240,14 @@ export default function InvoicePage() {
 
   const saveInvoice = async () => {
     if (!job || !customer) return
+    if (lineItems.length === 0) {
+      alert('Invoice must have at least one item');
+      return;
+    }
+    if (total <= 0) {
+      alert('Invoice total must be greater than $0');
+      return;
+    }
     setIsSaving(true)
     try {
       const { data: { user } } = await supabase.auth.getUser()

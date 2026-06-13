@@ -90,11 +90,22 @@ export default function EditInvoice() {
 
   const saveChanges = async () => {
     if (!invoice) return;
-    setIsSaving(true);
+
+    if (items.length === 0) {
+      alert('Invoice must have at least one item');
+      return;
+    }
 
     const subtotal = items.reduce((s, i) => s + i.total, 0);
     const taxAmount = invoice.tax_amount || 0;
     const total = subtotal + taxAmount;
+
+    if (total <= 0) {
+      alert('Invoice total must be greater than $0');
+      return;
+    }
+
+    setIsSaving(true);
 
     try {
       await supabase.from('invoices').update({
