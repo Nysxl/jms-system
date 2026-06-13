@@ -103,11 +103,13 @@ export default function Jobs() {
   const customerName = (id: string) => {
     const c = customers.find(c => c.id === id);
     if (!c) return '—';
+    const displayName = c.company_name || c.name;
     if (c.customer_type === 'sub_contact' && c.contractor_id) {
       const contractor = customers.find(p => p.id === c.contractor_id);
-      return contractor ? `${contractor.name} (${c.name})` : c.name;
+      const contractorDisplay = contractor ? (contractor.company_name || contractor.name) : null;
+      return contractorDisplay ? `${contractorDisplay} (${displayName})` : displayName;
     }
-    return c.name;
+    return displayName;
   };
 
   const formatDate = (d?: string) =>
