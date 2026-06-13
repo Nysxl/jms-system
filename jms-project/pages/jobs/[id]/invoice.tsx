@@ -75,6 +75,8 @@ export default function InvoicePage() {
   const [renderingPdfs, setRenderingPdfs] = useState(false)
   const [isEmailing, setIsEmailing] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
+  const [savedInvoiceId, setSavedInvoiceId] = useState<string | null>(null)
 
   useEffect(() => {
     if (id) loadAll()
@@ -231,6 +233,51 @@ export default function InvoicePage() {
     }
   }
 
+  const saveInvoice = async () => {
+    if (!job || !customer) return
+    setIsSaving(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      const { data: inv, error } = await supabase
+        .from('invoices')
+        .insert({
+          user_id: user!.id,
+          job_id: id,
+          customer_id: job.customer_id,
+          invoice_number: invoiceNumber,
+          status: 'draft',
+          subtotal,
+          tax_amount: gstAmount,
+          total_amount: total,
+          payment_terms: `${effectiveDays} days`,
+          due_date: dueDate.toISOString(),
+          notes: null,
+        })
+        .select()
+        .single()
+      if (error) throw error
+
+      if (lineItems.length > 0) {
+        await supabase.from('invoice_items').insert(
+          lineItems.map(li => ({
+            invoice_id: inv.id,
+            description: li.description,
+            quantity: li.quantity,
+            unit_price: li.unit_price,
+            amount: li.amount,
+          }))
+        )
+      }
+
+      setSavedInvoiceId(inv.id)
+      alert('Invoice saved to records! You can view it in the Invoices section.')
+    } catch (err: any) {
+      alert('Failed to save invoice: ' + err.message)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
   const formatDate = (d?: string) =>
     d ? new Date(d).toLocaleDateString('en-AU', { day: 'numeric', month: 'long', year: 'numeric' }) : '—'
 
@@ -353,7 +400,14 @@ export default function InvoicePage() {
           )}
 
           <div className="flex gap-2 border-l border-slate-700 pl-4">
-            <button 
+            <button
+              onClick={saveInvoice}
+              disabled={isSaving || !!savedInvoiceId}
+              className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"
+            >
+              {savedInvoiceId ? '✓ saved' : isSaving ? 'saving...' : '💾 save invoice'}
+            </button>
+            <button
               onClick={handleEmailInvoice}
               disabled={isEmailing || !customer?.email}
               className="bg-slate-700 hover:bg-slate-600 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition"

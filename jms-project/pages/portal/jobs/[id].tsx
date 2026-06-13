@@ -78,22 +78,17 @@ export default function PortalJobDetail() {
 
     setSavingNote(true);
     try {
-      const { data: note } = await supabase
-        .from('job_notes')
-        .insert({
-          job_id: job.id,
-          user_id: portalUser.user_id,
-          portal_user_id: portalUser.id,
-          content: newNote,
-          author_type: 'portal_user',
-          is_internal: false,
-        })
-        .select()
-        .single();
-
-      if (note) {
-        setNotes([note, ...notes]);
+      const res = await fetch('/api/portal/add-note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ portalUserId: portalUser.id, jobId: job.id, content: newNote }),
+      });
+      const data = await res.json();
+      if (res.ok && data.note) {
+        setNotes([data.note, ...notes]);
         setNewNote('');
+      } else {
+        alert('Failed to add note: ' + (data.error || 'Unknown error'));
       }
     } catch (err) {
       console.error('Error adding note:', err);
@@ -118,16 +113,16 @@ export default function PortalJobDetail() {
             .from('job-attachments')
             .getPublicUrl(fileName);
 
-          await supabase
-            .from('job_images')
-            .insert({
-              job_id: job.id,
-              user_id: portalUser.user_id,
-              portal_user_id: portalUser.id,
-              image_url: publicUrl,
-              file_name: file.name,
-              author_type: 'portal_user',
-            });
+          await fetch('/api/portal/add-photo', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              portalUserId: portalUser.id,
+              jobId: job.id,
+              imageUrl: publicUrl,
+              fileName: file.name,
+            }),
+          });
 
           setImages([...images, { id: Date.now().toString(), job_id: job.id, user_id: portalUser.user_id, image_url: publicUrl, file_name: file.name, author_type: 'portal_user', uploaded_at: new Date().toISOString() }]);
         }

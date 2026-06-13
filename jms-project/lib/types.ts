@@ -283,6 +283,19 @@ export interface Quotation {
   updated_at: string;
 }
 
+// Job Visit Types
+export interface JobVisit {
+  id: string;
+  job_id: string;
+  user_id: string;
+  scheduled_date: string;
+  duration_hours?: number;
+  notes?: string;
+  status: 'scheduled' | 'completed' | 'cancelled';
+  created_at: string;
+  updated_at: string;
+}
+
 // Time Tracking Types
 export interface TimeEntry {
   id: string;

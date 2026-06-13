@@ -459,6 +459,7 @@ export default function Customers() {
                     )}
 
                     <div className="flex gap-2 pt-2 mt-auto flex-wrap">
+                      <button onClick={() => router.push(`/customers/${c.id}`)} className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium py-2 rounded-lg transition">View</button>
                       <button onClick={() => openEditDirect(c)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-2 rounded-lg transition">Edit</button>
                       <button onClick={() => openPortalModal(c)} className="flex-1 bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-medium py-2 rounded-lg transition">Portal</button>
                       <button onClick={() => setDeleteConfirm(c.id)} className="flex-1 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-sm font-medium py-2 rounded-lg transition">Delete</button>
@@ -505,6 +506,7 @@ export default function Customers() {
                         </span>
                       )}
                       <div className="flex gap-2 flex-shrink-0">
+                        <button onClick={() => router.push(`/customers/${contractor.id}`)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium py-1.5 px-3 rounded-lg transition">View</button>
                         <button onClick={() => openEditContractor(contractor)} className="bg-slate-700 hover:bg-slate-600 text-white text-sm font-medium py-1.5 px-3 rounded-lg transition">Edit</button>
                         <button onClick={() => openPortalModal(contractor)} className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 text-sm font-medium py-1.5 px-3 rounded-lg transition">Portal</button>
                         <button onClick={() => openAddSubContact(contractor)} className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 text-sm font-medium py-1.5 px-3 rounded-lg transition">+ Contact</button>

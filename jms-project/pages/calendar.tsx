@@ -29,11 +29,23 @@ export default function CalendarPage() {
 
   const loadJobs = async () => {
     setIsLoading(true);
-    const { data } = await supabase
-      .from('jobs')
-      .select('*, customer:customers(*)')
-      .order('scheduled_date', { ascending: true });
-    if (data) setJobs(data);
+    const [jobsRes, visitsRes] = await Promise.all([
+      supabase.from('jobs').select('*, customer:customers!customer_id(*)').order('scheduled_date', { ascending: true }),
+      supabase.from('job_visits').select('*, job:jobs(id, title, status, customer_id, customer:customers!customer_id(name, company_name))').eq('status', 'scheduled').order('scheduled_date', { ascending: true }),
+    ]);
+
+    const jobsList = jobsRes.data || [];
+    const visitsList = (visitsRes.data || []).map((v: any) => ({
+      ...v.job,
+      id: v.job?.id,
+      scheduled_date: v.scheduled_date,
+      _visit_id: v.id,
+      _is_visit: true,
+      customer: v.job?.customer,
+    }));
+
+    // Merge: jobs with scheduled_date + visit dates as separate entries
+    setJobs([...jobsList, ...visitsList]);
     setIsLoading(false);
   };
 

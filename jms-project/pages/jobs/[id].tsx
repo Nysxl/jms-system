@@ -80,6 +80,11 @@ export default function JobDetail() {
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
+  const [visits, setVisits] = useState<any[]>([]);
+  const [showVisitModal, setShowVisitModal] = useState(false);
+  const [visitForm, setVisitForm] = useState({ scheduled_date: '', duration_hours: '', notes: '' });
+  const [savingVisit, setSavingVisit] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   // Notes
@@ -157,7 +162,7 @@ export default function JobDetail() {
 
   const loadAll = async () => {
     setIsLoading(true);
-    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory(), loadExpenses(), loadTimeEntries()]);
+    await Promise.all([loadJob(), loadNotes(), loadImages(), loadReports(), loadAttachments(), loadLineItems(), loadInventory(), loadExpenses(), loadTimeEntries(), loadInvoices(), loadVisits()]);
     setIsLoading(false);
   };
 
@@ -176,6 +181,42 @@ export default function JobDetail() {
         }
       }
     }
+  };
+
+  const loadInvoices = async () => {
+    const { data } = await supabase.from('invoices').select('*').eq('job_id', id).order('created_at', { ascending: false });
+    if (data) setInvoices(data);
+  };
+
+  const loadVisits = async () => {
+    const { data } = await supabase.from('job_visits').select('*').eq('job_id', id).order('scheduled_date', { ascending: true });
+    if (data) setVisits(data);
+  };
+
+  const handleAddVisit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!visitForm.scheduled_date) return;
+    setSavingVisit(true);
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase.from('job_visits').insert({
+      job_id: id,
+      user_id: user!.id,
+      scheduled_date: visitForm.scheduled_date,
+      duration_hours: visitForm.duration_hours ? parseFloat(visitForm.duration_hours) : null,
+      notes: visitForm.notes || null,
+      status: 'scheduled',
+    }).select().single();
+    if (!error && data) {
+      setVisits([...visits, data]);
+      setVisitForm({ scheduled_date: '', duration_hours: '', notes: '' });
+      setShowVisitModal(false);
+    }
+    setSavingVisit(false);
+  };
+
+  const updateVisitStatus = async (visitId: string, status: string) => {
+    await supabase.from('job_visits').update({ status, updated_at: new Date().toISOString() }).eq('id', visitId);
+    setVisits(visits.map(v => v.id === visitId ? { ...v, status } : v));
   };
 
   const loadNotes = async () => {
@@ -689,9 +730,34 @@ export default function JobDetail() {
                       href={`/jobs/${id}/invoice?gst=${gstEnabled}`}
                       className="block w-full text-center bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 rounded-lg transition mt-2"
                     >
-                      Generate Invoice
+                      + Generate New Invoice
                     </Link>
                   </div>
+
+                  {/* Saved Invoices */}
+                  {invoices.length > 0 && (
+                    <div className="mt-4 space-y-2">
+                      <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide">Saved Invoices</p>
+                      {invoices.map((inv: any) => (
+                        <Link key={inv.id} href={`/invoices`}
+                          className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
+                          <div>
+                            <p className="text-white text-sm font-medium">{inv.invoice_number}</p>
+                            <p className="text-slate-500 text-xs">{new Date(inv.created_at).toLocaleDateString()}</p>
+                          </div>
+                          <div className="text-right">
+                            <p className="text-white text-sm font-semibold">${(inv.total_amount || 0).toFixed(2)}</p>
+                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                              inv.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                              inv.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
+                              'bg-slate-600 text-slate-400'
+                            }`}>{inv.status}</span>
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 </>
               )}
             </div>
@@ -1037,6 +1103,42 @@ export default function JobDetail() {
               </div>
             )}
 
+            {/* Scheduled Visits */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-white font-semibold">Scheduled Visits</h3>
+                <button onClick={() => setShowVisitModal(true)}
+                  className="bg-blue-500 hover:bg-blue-600 text-white text-xs px-3 py-1.5 rounded-lg transition">
+                  + Add Visit
+                </button>
+              </div>
+              {visits.length === 0 ? (
+                <p className="text-slate-500 text-sm">No visits scheduled</p>
+              ) : (
+                <div className="space-y-2">
+                  {visits.map((v: any) => (
+                    <div key={v.id} className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2">
+                      <div>
+                        <p className="text-white text-sm font-medium">{new Date(v.scheduled_date).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}</p>
+                        {v.duration_hours && <p className="text-slate-500 text-xs">{v.duration_hours}h</p>}
+                        {v.notes && <p className="text-slate-400 text-xs mt-0.5">{v.notes}</p>}
+                      </div>
+                      <select value={v.status} onChange={e => updateVisitStatus(v.id, e.target.value)}
+                        className={`text-xs rounded-lg px-2 py-1 border-0 focus:outline-none cursor-pointer ${
+                          v.status === 'completed' ? 'bg-green-500/20 text-green-400' :
+                          v.status === 'cancelled' ? 'bg-red-500/20 text-red-400' :
+                          'bg-blue-500/20 text-blue-400'
+                        }`}>
+                        <option value="scheduled">Scheduled</option>
+                        <option value="completed">Completed</option>
+                        <option value="cancelled">Cancelled</option>
+                      </select>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {customer && (
               <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
                 <h3 className="text-white font-semibold mb-3">
@@ -1076,6 +1178,48 @@ export default function JobDetail() {
           </div>
         </div>
       </main>
+
+      {/* Add Visit Modal */}
+      {showVisitModal && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 px-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl w-full max-w-md">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-700">
+              <h3 className="text-white font-semibold">Schedule a Visit</h3>
+              <button onClick={() => setShowVisitModal(false)} className="text-slate-400 hover:text-white transition">✕</button>
+            </div>
+            <form onSubmit={handleAddVisit} className="p-6 space-y-4">
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Date & Time *</label>
+                <input type="datetime-local" value={visitForm.scheduled_date}
+                  onChange={e => setVisitForm({ ...visitForm, scheduled_date: e.target.value })}
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Duration (hours)</label>
+                <input type="number" min="0" step="0.5" value={visitForm.duration_hours}
+                  onChange={e => setVisitForm({ ...visitForm, duration_hours: e.target.value })}
+                  placeholder="e.g. 2"
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Notes</label>
+                <input type="text" value={visitForm.notes}
+                  onChange={e => setVisitForm({ ...visitForm, notes: e.target.value })}
+                  placeholder="Optional note for this visit"
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button type="button" onClick={() => setShowVisitModal(false)}
+                  className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-2 rounded-lg transition">Cancel</button>
+                <button type="submit" disabled={savingVisit || !visitForm.scheduled_date}
+                  className="flex-1 bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold py-2 rounded-lg transition">
+                  {savingVisit ? 'Saving...' : 'Add Visit'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Add Line Item Modal */}
       {showLineItemModal && (
