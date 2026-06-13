@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .eq('id', portalUserId)
     .single();
 
-  if (!portalUser) return res.status(404).json({ error: 'Portal user not found' });
+  if (!portalUser) return res.status(404).json({ error: 'Portal user not found', receivedId: portalUserId, hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY });
 
   const customerId = portalUser.customer_id;
 
