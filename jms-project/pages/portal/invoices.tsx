@@ -25,12 +25,15 @@ export default function PortalInvoices() {
   const loadInvoices = async (portalUser: any) => {
     setIsLoading(true);
     try {
-      const { data } = await supabase
+      console.log('Loading invoices for customer:', portalUser.customer_id);
+      const { data, error } = await supabase
         .from('invoices')
         .select('*')
         .eq('customer_id', portalUser.customer_id)
         .order('created_at', { ascending: false });
 
+      console.log('Invoices query result:', { data, error });
+      if (error) throw error;
       if (data) setInvoices(data);
     } catch (err) {
       console.error('Failed to load invoices:', err);
