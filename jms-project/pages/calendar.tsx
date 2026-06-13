@@ -15,7 +15,6 @@ export default function CalendarPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [selectedJobs, setSelectedJobs] = useState<JobWithCustomer[]>([]);
   const [showBulkModal, setShowBulkModal] = useState(false);
   const [bulkStatus, setBulkStatus] = useState<string>('in-progress');
   const [savingBulk, setSavingBulk] = useState(false);
