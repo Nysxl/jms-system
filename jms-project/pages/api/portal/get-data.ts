@@ -38,17 +38,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .in('customer_id', customerIds)
     .order('created_at', { ascending: false });
 
-  // Get invoices for this customer + sub-contacts
-  const { data: invoices } = await supabase
-    .from('invoices')
-    .select('*, job:jobs(title)')
-    .in('customer_id', customerIds)
-    .order('created_at', { ascending: false });
-
   return res.status(200).json({
     subContacts: subContacts || [],
     jobs: jobs || [],
-    invoices: invoices || [],
     _debug: { customerId, customerIds, jobsError: jobsError?.message },
   });
 }
