@@ -78,6 +78,7 @@ export default function JobDetail() {
   const [images, setImages] = useState<JobImage[]>([]);
   const [reports, setReports] = useState<ServiceReport[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
+  const [attachmentSearch, setAttachmentSearch] = useState('');
   const [lineItems, setLineItems] = useState<LineItem[]>([]);
   const [inventoryItems, setInventoryItems] = useState<InventoryItem[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -411,6 +412,7 @@ export default function JobDetail() {
         job_id: id, user_id: user?.id, file_name: file.name,
         file_url: urlData.publicUrl, file_type: file.type,
         file_size: file.size, uploaded_at: new Date().toISOString(),
+        uploader_email: user?.email, author_type: 'admin',
       }]);
     }
     setUploadingAttachment(false);
@@ -931,13 +933,22 @@ export default function JobDetail() {
                     <p className="text-slate-400 text-sm">Click to attach files — PDFs, Word docs, spreadsheets, and more</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {attachments.map(att => (
+                  <div className="space-y-3">
+                    {attachments.length > 0 && (
+                      <input type="text" value={attachmentSearch} onChange={e => setAttachmentSearch(e.target.value)}
+                        placeholder="Search by filename or uploader..."
+                        className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500" />
+                    )}
+                    {attachments.filter(att => {
+                      const q = attachmentSearch.toLowerCase();
+                      return (att.file_name?.toLowerCase().includes(q) ||
+                              (att.uploader_email as any)?.toLowerCase().includes(q));
+                    }).map(att => (
                       <div key={att.id} className="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3 group">
                         <span className="text-2xl flex-shrink-0">{fileIcon(att.file_type)}</span>
                         <div className="flex-1 min-w-0">
                           <p className="text-white text-sm font-medium truncate">{att.file_name}</p>
-                          <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)}</p>
+                          <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)} · {(att.uploader_email as any) || 'Unknown'}</p>
                         </div>
                         <div className="flex gap-2 flex-shrink-0">
                           {att.file_type === 'application/pdf' ? (

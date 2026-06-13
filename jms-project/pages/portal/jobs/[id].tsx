@@ -166,6 +166,8 @@ export default function PortalJobDetail() {
           file_type: file.type,
           file_size: file.size,
           uploaded_at: new Date().toISOString(),
+          uploader_email: user.email,
+          author_type: 'portal_user',
         }).select().single();
 
         if (attError) throw attError;
