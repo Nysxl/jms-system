@@ -49,7 +49,7 @@ export default function EditInvoice() {
     setIsLoading(true);
     const [invRes, itemsRes] = await Promise.all([
       supabase.from('invoices').select('*').eq('id', id).single(),
-      supabase.from('invoice_items').select('*').eq('invoice_id', id).order('sort_order'),
+      supabase.from('invoice_items').select('*').eq('invoice_id', id),
     ]);
     if (invRes.data) {
       setInvoice(invRes.data);
