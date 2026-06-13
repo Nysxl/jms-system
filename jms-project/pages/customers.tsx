@@ -173,10 +173,62 @@ export default function Customers() {
     loadAll(session.user.id);
   };
 
-  const handleDelete = async (id: string) => {
-    await supabase.from('customers').delete().eq('id', id);
-    setDeleteConfirm(null);
-    loadAll(userId);
+  const handleDelete = async (customerId: string) => {
+    try {
+      // Get all sub-contacts for this customer
+      const { data: subContacts } = await supabase
+        .from('customers')
+        .select('id')
+        .eq('contractor_id', customerId)
+        .eq('customer_type', 'sub_contact');
+
+      const subContactIds = subContacts?.map(c => c.id) || [];
+      const allCustomerIds = [customerId, ...subContactIds];
+
+      // Delete all jobs and related data for this customer and sub-contacts
+      for (const cId of allCustomerIds) {
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id')
+          .eq('customer_id', cId);
+
+        for (const job of jobs || []) {
+          // Delete related job data
+          await supabase.from('job_notes').delete().eq('job_id', job.id);
+          await supabase.from('job_images').delete().eq('job_id', job.id);
+          await supabase.from('job_attachments').delete().eq('job_id', job.id);
+          await supabase.from('time_entries').delete().eq('job_id', job.id);
+          await supabase.from('expenses').delete().eq('job_id', job.id);
+          // Delete the job
+          await supabase.from('jobs').delete().eq('id', job.id);
+        }
+
+        // Delete portal users for this customer
+        await supabase.from('portal_users').delete().eq('customer_id', cId);
+      }
+
+      // Delete sub-contacts
+      if (subContactIds.length > 0) {
+        await supabase
+          .from('customers')
+          .delete()
+          .in('id', subContactIds)
+          .eq('user_id', userId);
+      }
+
+      // Finally delete the main customer
+      await supabase
+        .from('customers')
+        .delete()
+        .eq('id', customerId)
+        .eq('user_id', userId);
+
+      setDeleteConfirm(null);
+      loadAll(userId);
+    } catch (err: any) {
+      console.error('Delete error:', err);
+      alert('Failed to delete: ' + err.message);
+    }
   };
 
   // ---- Sub-contact CRUD ----

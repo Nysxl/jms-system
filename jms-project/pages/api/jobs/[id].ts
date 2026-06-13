@@ -18,26 +18,61 @@ export default async function handler(
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
 
-  const { id: _ } = req.query;
+  const { id } = req.query;
 
   try {
     if (req.method === 'GET') {
       // Get single job
-      return res.status(200).json({
-        success: true,
-        data: null,
-      });
-    } else if (req.method === 'PUT') {
+      const { data } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .single();
 
       return res.status(200).json({
         success: true,
-        data: null,
+        data,
       });
-    } else if (req.method === 'DELETE') {
-      // Delete job
+    } else if (req.method === 'PUT') {
+      const { title, description, status, priority, scheduled_date } = req.body;
+      const { data } = await supabase
+        .from('jobs')
+        .update({ title, description, status, priority, scheduled_date })
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
       return res.status(200).json({
         success: true,
-        data: null,
+        data,
+      });
+    } else if (req.method === 'DELETE') {
+      // Delete job and all related data
+      // First delete job notes
+      await supabase.from('job_notes').delete().eq('job_id', id);
+      // Delete job images
+      await supabase.from('job_images').delete().eq('job_id', id);
+      // Delete job attachments
+      await supabase.from('job_attachments').delete().eq('job_id', id);
+      // Delete time entries
+      await supabase.from('time_entries').delete().eq('job_id', id);
+      // Delete expenses
+      await supabase.from('expenses').delete().eq('job_id', id);
+      // Finally delete the job itself
+      const { data } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', id)
+        .eq('user_id', user.id)
+        .select()
+        .single();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Job deleted successfully',
+        data,
       });
     } else {
       return res.status(405).json({ success: false, error: 'Method not allowed' });
