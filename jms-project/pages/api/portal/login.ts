@@ -29,21 +29,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(401).json({ error: 'Invalid email or password.' });
   }
 
-  // Update last_login
-  await supabase
-    .from('portal_users')
-    .update({ last_login: new Date().toISOString() })
-    .eq('id', portalUser.id);
+  try {
+    // Update last_login
+    await supabase
+      .from('portal_users')
+      .update({ last_login: new Date().toISOString() })
+      .eq('id', portalUser.id);
+  } catch (e) {
+    console.error('Failed to update last_login:', e);
+  }
 
-  // Log the login activity
-  const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '';
-  await supabase.from('portal_activity_log').insert([{
-    portal_user_id: portalUser.id,
-    user_id: portalUser.user_id,
-    action_type: 'login',
-    ip_address: ip,
-    created_at: new Date().toISOString(),
-  }]);
+  try {
+    // Log the login activity
+    const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0] || req.socket.remoteAddress || '';
+    await supabase.from('portal_activity_log').insert([{
+      portal_user_id: portalUser.id,
+      user_id: portalUser.user_id,
+      action_type: 'login',
+      ip_address: ip,
+      created_at: new Date().toISOString(),
+    }]);
+  } catch (e) {
+    console.error('Failed to log activity:', e);
+  }
 
   return res.status(200).json({
     success: true,
