@@ -11,7 +11,7 @@ export default function PortalLogin() {
 
   useEffect(() => {
     const session = localStorage.getItem('portal_session');
-    if (session) router.push('/portal/dashboard');
+    if (session) router.push('/portal/jobs');
   }, [router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
