@@ -58,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       entity_type: 'job',
       entity_id: job.id,
       details: JSON.stringify({ title, scheduledDate }),
-    }).then(() => {}).catch(() => {});
+    }).then(() => {}, () => {});
 
     // Send email to admin (optional - gracefully handles missing Resend)
     if (process.env.RESEND_API_KEY) {
