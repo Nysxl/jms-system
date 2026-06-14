@@ -100,6 +100,7 @@ export default function JobDetail() {
 
   // Photos
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [togglingImages, setTogglingImages] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const [photoTimestamp, setPhotoTimestamp] = useState('');
   const [editingImageTimestamp, setEditingImageTimestamp] = useState<string | null>(null);
@@ -905,8 +906,14 @@ export default function JobDetail() {
                             <div className="flex flex-col gap-2 mt-auto">
                               <button onClick={() => setLightbox(img.image_url)} className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
                               <button onClick={async () => {
-                                await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
-                                loadImages();
+                                const newValue = !(img.is_internal as any);
+                                const { error } = await supabase.from('job_images').update({ is_internal: newValue }).eq('id', img.id);
+                                if (!error) {
+                                  setImages(images.map(i => i.id === img.id ? { ...i, is_internal: newValue } : i));
+                                } else {
+                                  console.error('Error updating image:', error);
+                                  alert('Failed to update visibility');
+                                }
                               }} className={`w-full text-white text-xs px-2 py-1.5 rounded transition ${(img.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
                                 {(img.is_internal as any) ? 'Hide' : 'Show'}
                               </button>
@@ -976,8 +983,14 @@ export default function JobDetail() {
                                   className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Open</a>
                               )}
                               <button onClick={async () => {
-                                await supabase.from('job_attachments').update({ is_internal: !(att.is_internal as any) }).eq('id', att.id);
-                                loadAttachments();
+                                const newValue = !(att.is_internal as any);
+                                const { error } = await supabase.from('job_attachments').update({ is_internal: newValue }).eq('id', att.id);
+                                if (!error) {
+                                  setAttachments(attachments.map(a => a.id === att.id ? { ...a, is_internal: newValue } : a));
+                                } else {
+                                  console.error('Error updating attachment:', error);
+                                  alert('Failed to update visibility');
+                                }
                               }}
                                 className={`w-full px-2 py-1.5 rounded transition text-xs text-white ${(att.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
                                 {(att.is_internal as any) ? 'Hide' : 'Show'}
