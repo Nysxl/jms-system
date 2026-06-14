@@ -39,6 +39,7 @@ export default function PortalJobDetail() {
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [invoiceJob, setInvoiceJob] = useState<any | null>(null);
   const [company, setCompany] = useState<any | null>(null);
+  const [isDownloadingInvoice, setIsDownloadingInvoice] = useState(false);
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -259,6 +260,45 @@ export default function PortalJobDetail() {
     } catch (err) {
       console.error('Signature save error:', err);
     }
+  };
+
+  const downloadInvoicePdf = () => {
+    const element = document.getElementById('invoice-document');
+    if (!element || !selectedInvoice) return;
+    setIsDownloadingInvoice(true);
+
+    const loadImages = (node: Element): Promise<void> => {
+      const images = node.querySelectorAll('img');
+      const promises = Array.from(images).map(img =>
+        new Promise<void>((resolve) => {
+          if (img.complete) {
+            resolve();
+          } else {
+            img.onload = () => resolve();
+            img.onerror = () => resolve();
+          }
+        })
+      );
+      return Promise.all(promises).then(() => {});
+    };
+
+    loadImages(element).then(() => {
+      const opt = {
+        margin: 10,
+        filename: `${selectedInvoice.invoice_number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+      };
+
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+        (window as any).html2pdf().set(opt).from(element).save();
+        setIsDownloadingInvoice(false);
+      };
+      document.head.appendChild(script);
+    });
   };
 
   const drawSignature = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -592,7 +632,12 @@ export default function PortalJobDetail() {
             <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0">
                 <h3 className="text-lg font-semibold text-slate-900">{selectedInvoice.invoice_number}</h3>
-                <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
+                <div className="flex gap-2 items-center">
+                  <button onClick={downloadInvoicePdf} disabled={isDownloadingInvoice} className="text-sm bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-3 py-1.5 rounded transition">
+                    {isDownloadingInvoice ? '📥 Downloading...' : '📥 Download PDF'}
+                  </button>
+                  <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 p-8 space-y-6">
                 <div id="invoice-document" className="bg-white">
