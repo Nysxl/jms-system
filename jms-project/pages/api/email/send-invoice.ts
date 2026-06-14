@@ -19,12 +19,6 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       return res.status(501).json({ error: 'Email service not configured. Set RESEND_API_KEY environment variable and install resend: npm install resend' });
     }
 
-    // Get authenticated admin user
-    const authHeader = _req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
     // Dynamically import Resend - use @ts-ignore to suppress type errors when package not installed
     // @ts-ignore
     const { Resend } = await import('resend').catch(() => {
