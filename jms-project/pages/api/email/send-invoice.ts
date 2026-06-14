@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-// @ts-ignore
-import sgMail from '@sendgrid/mail';
+import nodemailer from 'nodemailer';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,11 +16,17 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
   }
 
   try {
-    if (!process.env.SENDGRID_API_KEY) {
-      return res.status(501).json({ error: 'Email service not configured. Set SENDGRID_API_KEY environment variable.' });
+    if (!process.env.GMAIL_EMAIL || !process.env.GMAIL_APP_PASSWORD) {
+      return res.status(501).json({ error: 'Email service not configured. Set GMAIL_EMAIL and GMAIL_APP_PASSWORD environment variables.' });
     }
 
-    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+    const transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: {
+        user: process.env.GMAIL_EMAIL,
+        pass: process.env.GMAIL_APP_PASSWORD,
+      },
+    });
 
     // Fetch invoice + job + company details
     const { data: invoice } = await supabase
@@ -94,16 +99,13 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       </html>
     `;
 
-    // Send email via SendGrid
-    const msg = {
-      to: recipientEmail,
+    // Send email via Gmail SMTP - from user's email
+    await transporter.sendMail({
       from: fromEmail,
-      replyTo: fromEmail,
+      to: recipientEmail,
       subject: `Invoice #${invoice.invoice_number}`,
       html,
-    };
-
-    await sgMail.send(msg);
+    });
 
     // Update invoice status to 'sent' if it was draft and track email sent time
     const now = new Date().toISOString();
