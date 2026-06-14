@@ -346,11 +346,10 @@ export default function PortalJobDetail() {
               <h4 className="text-slate-300 font-medium text-sm mb-3">📸 {(job as any)?.admin_company_name || 'Admin'} Photos</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {adminImages.filter(img => !(img.is_internal as any)).map(img => (
-                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
-                    <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
+                    <div className="p-2">
+                      <button onClick={() => {}} className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
                     </div>
                   </div>
                 ))}
@@ -368,11 +367,10 @@ export default function PortalJobDetail() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {customerImages.map(img => (
-                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
-                    <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
+                    <div className="p-2">
+                      <button onClick={() => {}} className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
                     </div>
                   </div>
                 ))}
@@ -393,8 +391,6 @@ export default function PortalJobDetail() {
                     <div className="p-3 flex-1 flex flex-col">
                       <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      <a href={att.file_url} download={att.file_name}
-                        className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -419,8 +415,6 @@ export default function PortalJobDetail() {
                     <div className="p-3 flex-1 flex flex-col">
                       <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      <a href={att.file_url} download={att.file_name}
-                        className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -451,11 +445,10 @@ export default function PortalJobDetail() {
               <h4 className="text-slate-300 font-medium text-sm mb-3">Admin Photos</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {adminImages.map(img => (
-                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
-                    <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
+                    <div className="p-2">
+                      <button onClick={() => {}} className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
                     </div>
                   </div>
                 ))}
