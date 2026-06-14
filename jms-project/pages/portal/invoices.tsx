@@ -52,11 +52,11 @@ export default function PortalInvoices() {
     const [itemsRes, jobRes, compRes] = await Promise.all([
       supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id),
       supabase.from('jobs').select('*').eq('id', invoice.job_id).single(),
-      supabase.from('company_settings').select('*').single(),
+      supabase.from('company_settings').select('*').single().catch(() => ({ data: null })),
     ]);
     setInvoiceItems(itemsRes.data || []);
     setInvoiceJob(jobRes.data || null);
-    setCompany(compRes.data || null);
+    setCompany(compRes.data || { company_name: 'Company Name' });
   };
 
   const statusColor = (s: string) => {
