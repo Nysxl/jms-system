@@ -818,8 +818,11 @@ export default function JobDetail() {
                     {notes.filter(n => n.author_type === 'admin').map(note => (
                       <div key={note.id} className="flex gap-3 group">
                         <div className="flex-1 bg-slate-900 rounded-lg px-4 py-3">
-                          <p className="text-slate-300 text-sm">{note.content}</p>
-                          <div className="flex items-center gap-2 mt-1 flex-wrap">
+                          <div className="flex items-center justify-between mb-2">
+                            <p className="text-slate-300 text-sm">{note.content}</p>
+                            <span className="text-slate-500 text-xs ml-2">{note.author_type === 'admin' ? '📝 Admin' : '👤 Client'}</span>
+                          </div>
+                          <div className="flex items-center gap-2 flex-wrap">
                             {editingNoteTimestamp === note.id ? (
                               <div className="flex items-center gap-1">
                                 <input type="datetime-local" value={editingNoteTs} onChange={e => setEditingNoteTs(e.target.value)}
@@ -839,11 +842,13 @@ export default function JobDetail() {
                           </div>
                         </div>
                         <div className="flex flex-col gap-1">
-                          <button onClick={() => toggleNoteInternal(note.id, note.is_internal || false)}
-                            className={`text-sm transition px-2 py-1 rounded ${note.is_internal ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
-                            title={note.is_internal ? 'Hidden from portal users' : 'Visible to portal users'}>
-                            {note.is_internal ? 'Hide' : 'Show'}
-                          </button>
+                          {note.author_type === 'admin' && (
+                            <button onClick={() => toggleNoteInternal(note.id, note.is_internal || false)}
+                              className={`text-sm transition px-2 py-1 rounded ${note.is_internal ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
+                              title={note.is_internal ? 'Hidden from portal users' : 'Visible to portal users'}>
+                              {note.is_internal ? 'Hide' : 'Show'}
+                            </button>
+                          )}
                           <button onClick={() => handleDeleteNote(note.id)}
                             className="bg-red-600 hover:bg-red-500 text-white text-sm px-2 py-1 rounded transition">Delete</button>
                         </div>
@@ -974,7 +979,10 @@ export default function JobDetail() {
                             <span className="text-4xl">{fileIcon(att.file_type)}</span>
                           </div>
                           <div className="p-3 flex-1 flex flex-col">
-                            <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <p className="text-white text-xs font-medium truncate flex-1">{att.file_name}</p>
+                              <span className="text-slate-500 text-xs flex-shrink-0">{att.author_type === 'admin' ? '📝' : '👤'}</span>
+                            </div>
                             <p className="text-slate-500 text-xs mb-3 flex-1">{formatSize(att.file_size)}</p>
                             <div className="flex flex-col gap-2 mt-auto">
                               {att.file_type === 'application/pdf' ? (
@@ -987,19 +995,21 @@ export default function JobDetail() {
                                 <a href={att.file_url} target="_blank" rel="noopener noreferrer"
                                   className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Open</a>
                               )}
-                              <button onClick={async () => {
-                                const newValue = !(att.is_internal as any);
-                                const { error } = await supabase.from('job_attachments').update({ is_internal: newValue }).eq('id', att.id);
-                                if (!error) {
-                                  setAttachments(attachments.map(a => a.id === att.id ? { ...a, is_internal: newValue } : a));
-                                } else {
-                                  console.error('Error updating attachment:', error);
-                                  alert('Failed to update visibility');
-                                }
-                              }}
-                                className={`w-full px-2 py-1.5 rounded transition text-xs text-white ${(att.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
-                                {(att.is_internal as any) ? 'Hide' : 'Show'}
-                              </button>
+                              {att.author_type === 'admin' && (
+                                <button onClick={async () => {
+                                  const newValue = !(att.is_internal as any);
+                                  const { error } = await supabase.from('job_attachments').update({ is_internal: newValue }).eq('id', att.id);
+                                  if (!error) {
+                                    setAttachments(attachments.map(a => a.id === att.id ? { ...a, is_internal: newValue } : a));
+                                  } else {
+                                    console.error('Error updating attachment:', error);
+                                    alert('Failed to update visibility');
+                                  }
+                                }}
+                                  className={`w-full px-2 py-1.5 rounded transition text-xs text-white ${(att.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
+                                  {(att.is_internal as any) ? 'Hide' : 'Show'}
+                                </button>
+                              )}
                               <button onClick={() => handleDeleteAttachment(att)}
                                 className="w-full bg-red-600 hover:bg-red-500 text-white text-xs px-2 py-1.5 rounded transition">Delete</button>
                             </div>

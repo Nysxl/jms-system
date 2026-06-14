@@ -323,6 +323,9 @@ export default function PortalJobDetail() {
             <div className="space-y-3">
               {customerNotes.map(note => (
                 <div key={note.id} className="bg-slate-900 rounded-lg px-4 py-3 group">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-slate-400 text-xs">👤 Your note</span>
+                  </div>
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1">
                       <p className="text-slate-300 text-sm">{note.content}</p>
@@ -389,7 +392,10 @@ export default function PortalJobDetail() {
                       <span className="text-4xl">{fileIcon(att.file_type)}</span>
                     </div>
                     <div className="p-3 flex-1 flex flex-col">
-                      <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-white text-xs font-medium truncate flex-1">{att.file_name}</p>
+                        <span className="text-slate-400 text-xs flex-shrink-0">📝</span>
+                      </div>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
                     </div>
                   </div>
@@ -413,7 +419,10 @@ export default function PortalJobDetail() {
                       <span className="text-4xl">{fileIcon(att.file_type)}</span>
                     </div>
                     <div className="p-3 flex-1 flex flex-col">
-                      <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                      <div className="flex items-center justify-between gap-2 mb-1">
+                        <p className="text-white text-xs font-medium truncate flex-1">{att.file_name}</p>
+                        <span className="text-slate-400 text-xs flex-shrink-0">👤</span>
+                      </div>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
                     </div>
                   </div>
@@ -432,6 +441,9 @@ export default function PortalJobDetail() {
             <div className="space-y-3">
               {adminNotes.map(note => (
                 <div key={note.id} className="bg-slate-900 rounded-lg px-4 py-3">
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className="text-slate-400 text-xs">📝 {(job as any)?.admin_company_name || 'Admin'}</span>
+                  </div>
                   <p className="text-slate-300 text-sm">{note.content}</p>
                   <p className="text-slate-600 text-xs mt-1">{new Date(note.created_at).toLocaleString()}</p>
                 </div>
