@@ -446,12 +446,12 @@ export default function EditInvoice() {
                   </div>
                 </div>
 
-                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1">
+                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1 mt-8">
                   <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{job.title}</span></div>
                   <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{formatDate(invoice.due_date)}</span></div>
                 </div>
 
-                <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
+                <div style={{ height: '2px', backgroundColor: accentColor }} className="my-6"></div>
 
                 <div className="border border-slate-300 rounded-lg overflow-hidden">
                 <table className="w-full text-xs">
