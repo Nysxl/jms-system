@@ -36,6 +36,10 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
 
     if (!report) return res.status(404).json({ error: 'Report not found.' });
 
+    // Get authenticated user's email
+    const { data: { user } } = await supabase.auth.admin.getUserById(report.user_id);
+    const fromEmail = user?.email || 'noreply@jms-system.local';
+
     // Fetch company settings
     const { data: settings } = await supabase
       .from('company_settings')
@@ -44,7 +48,6 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       .single();
 
     const companyName = settings?.company_name || 'Service Report';
-    const fromEmail = settings?.email || 'noreply@jms-system.local';
 
     // Generate HTML report
     const html = `
