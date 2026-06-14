@@ -35,6 +35,10 @@ export default function PortalJobDetail() {
   const [images, setImages] = useState<JobImage[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
   const [invoices, setInvoices] = useState<any[]>([]);
+  const [selectedInvoice, setSelectedInvoice] = useState<any | null>(null);
+  const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
+  const [invoiceJob, setInvoiceJob] = useState<any | null>(null);
+  const [company, setCompany] = useState<any | null>(null);
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -511,7 +515,7 @@ export default function PortalJobDetail() {
                       <p className="text-slate-400 text-xs">Created {new Date(invoice.created_at).toLocaleDateString()}</p>
                     </div>
                     <div className="text-right">
-                      <p className="text-white font-semibold">${(invoice.total || 0).toFixed(2)}</p>
+                      <p className="text-white font-semibold">${parseFloat(invoice.total || 0).toFixed(2)}</p>
                       <span className={`text-xs px-2 py-1 rounded ${
                         invoice.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
                         invoice.status === 'paid' ? 'bg-green-500/20 text-green-400' :
@@ -522,10 +526,31 @@ export default function PortalJobDetail() {
                     </div>
                   </div>
                   <p className="text-slate-400 text-xs mb-3">Due {new Date(invoice.due_date).toLocaleDateString()}</p>
-                  <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer"
+                  <button onClick={async () => {
+                    try {
+                      const [itemsRes, jobRes] = await Promise.all([
+                        supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id),
+                        supabase.from('jobs').select('*').eq('id', invoice.job_id).single(),
+                      ]);
+
+                      if (itemsRes.data) setInvoiceItems(itemsRes.data);
+                      if (jobRes.data) setInvoiceJob(jobRes.data);
+                      setSelectedInvoice(invoice);
+
+                      try {
+                        const compRes = await supabase.from('company_settings').select('*').single();
+                        setCompany(compRes.data || { company_name: 'Company Name', show_logo: true, show_company_name: true, invoice_accent_color: '#3b82f6' });
+                      } catch (err) {
+                        setCompany({ company_name: 'Company Name', show_logo: true, show_company_name: true, invoice_accent_color: '#3b82f6' });
+                      }
+                    } catch (err) {
+                      console.error('Failed to load invoice details:', err);
+                      alert('Failed to load invoice details');
+                    }
+                  }}
                     className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded transition">
                     View Invoice
-                  </a>
+                  </button>
                 </div>
               ))}
             </div>
@@ -558,6 +583,88 @@ export default function PortalJobDetail() {
                 )}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Invoice Preview Modal */}
+        {selectedInvoice && invoiceJob && company && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
+            <div className="bg-slate-900 rounded-lg shadow-2xl w-full max-w-2xl my-8" id="invoice-document">
+              <div className="flex items-center justify-between p-6 border-b border-slate-700">
+                <h3 className="text-white text-lg font-semibold">Invoice #{selectedInvoice.invoice_number}</h3>
+                <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white text-2xl">✕</button>
+              </div>
+              <div className="p-8 space-y-6">
+                {/* Header */}
+                <div className="border border-slate-300 rounded-lg p-6">
+                  <div className="flex justify-between items-start mb-4">
+                    <div>
+                      <h2 className="text-2xl font-bold text-slate-900">INVOICE</h2>
+                      <p className="text-slate-600">{company.company_name}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="font-semibold text-slate-900">Invoice #: {selectedInvoice.invoice_number}</p>
+                      <p className="text-slate-600">Date: {new Date(selectedInvoice.created_at).toLocaleDateString()}</p>
+                      <p className="text-slate-600">Due: {new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Job Details */}
+                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50">
+                  <div><span className="text-slate-500 text-xs">Job:</span> <span className="font-medium text-slate-800">{invoiceJob.title}</span></div>
+                </div>
+
+                {/* Line Items */}
+                {invoiceItems.length > 0 && (
+                  <div className="border border-slate-300 rounded-lg overflow-hidden">
+                    <table className="w-full">
+                      <thead className="bg-slate-700 text-white">
+                        <tr>
+                          <th className="text-left p-3">Description</th>
+                          <th className="text-right p-3 w-24">Qty</th>
+                          <th className="text-right p-3 w-28">Unit Price</th>
+                          <th className="text-right p-3 w-28">Total</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoiceItems.map((item: any) => (
+                          <tr key={item.id} className="border-t border-slate-300">
+                            <td className="p-3 text-slate-800">{item.description}</td>
+                            <td className="text-right p-3 text-slate-800">{item.quantity}</td>
+                            <td className="text-right p-3 text-slate-800">${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                            <td className="text-right p-3 text-slate-800">${parseFloat(item.total || 0).toFixed(2)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                {/* Totals */}
+                <div className="border border-slate-300 rounded-lg p-4 flex justify-end">
+                  <div className="w-64">
+                    <div className="flex justify-between text-slate-800 mb-2">
+                      <span>Subtotal:</span>
+                      <span>${parseFloat(selectedInvoice.subtotal || 0).toFixed(2)}</span>
+                    </div>
+                    {selectedInvoice.tax > 0 && (
+                      <div className="flex justify-between text-slate-800 mb-2">
+                        <span>Tax:</span>
+                        <span>${parseFloat(selectedInvoice.tax || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between font-semibold text-lg border-t border-slate-300 pt-2" style={{ color: company.invoice_accent_color }}>
+                      <span>Total:</span>
+                      <span>${parseFloat(selectedInvoice.total || 0).toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="p-6 border-t border-slate-700 flex gap-3">
+                <button onClick={() => setSelectedInvoice(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Close</button>
+              </div>
+            </div>
           </div>
         )}
       </main>
