@@ -29,14 +29,12 @@ export default function PortalInvoices() {
   const loadInvoices = async (portalUser: any) => {
     setIsLoading(true);
     try {
-      console.log('Loading invoices for customer:', portalUser.customer_id);
       const { data, error } = await supabase
         .from('invoices')
         .select('*')
         .eq('customer_id', portalUser.customer_id)
         .order('created_at', { ascending: false });
 
-      console.log('Invoices query result:', { data, error });
       if (error) throw error;
       if (data) setInvoices(data);
     } catch (err) {
@@ -48,19 +46,30 @@ export default function PortalInvoices() {
   };
 
   const openInvoice = async (invoice: any) => {
-    setSelectedInvoice(invoice);
-    const [itemsRes, jobRes] = await Promise.all([
-      supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id),
-      supabase.from('jobs').select('*').eq('id', invoice.job_id).single(),
-    ]);
-    setInvoiceItems(itemsRes.data || []);
-    setInvoiceJob(jobRes.data || null);
-
     try {
-      const compRes = await supabase.from('company_settings').select('*').single();
-      setCompany(compRes.data || { company_name: 'Company Name' });
-    } catch {
-      setCompany({ company_name: 'Company Name' });
+      setSelectedInvoice(invoice);
+      const [itemsRes, jobRes] = await Promise.all([
+        supabase.from('invoice_items').select('*').eq('invoice_id', invoice.id),
+        supabase.from('jobs').select('*').eq('id', invoice.job_id).single(),
+      ]);
+
+      if (itemsRes.error) throw itemsRes.error;
+      if (jobRes.error) throw jobRes.error;
+
+      setInvoiceItems(itemsRes.data || []);
+      setInvoiceJob(jobRes.data || null);
+
+      try {
+        const compRes = await supabase.from('company_settings').select('*').single();
+        setCompany(compRes.data || { company_name: 'Company Name' });
+      } catch (err) {
+        console.warn('Failed to load company settings:', err);
+        setCompany({ company_name: 'Company Name' });
+      }
+    } catch (err) {
+      console.error('Failed to load invoice details:', err);
+      setSelectedInvoice(null);
+      alert('Failed to load invoice details. Please try again.');
     }
   };
 
