@@ -407,51 +407,54 @@ export default function EditInvoice() {
               </div>
               <div className="p-8 space-y-6 max-h-[calc(90vh-60px)] overflow-y-auto">
                 <div id="invoice-document" className="bg-white" style={{ '--accent-color': accentColor } as React.CSSProperties}>
-                <div className="flex items-start justify-between pb-6" style={{ borderBottom: `2px solid ${accentColor}` }}>
-                  <div className="flex items-center gap-4">
-                    {company.show_logo && company.logo_url ? (
-                      <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
-                    ) : company.show_logo ? (
-                      <div style={{ backgroundColor: accentColor }} className="w-12 h-12 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">logo</span>
-                      </div>
-                    ) : null}
-                    {company.show_company_name && (
-                      <div>
-                        <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
-                        {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
-                      </div>
-                    )}
+                <div className="border border-slate-300 rounded-lg p-6" style={{ borderBottom: `2px solid ${accentColor}` }}>
+                  <div className="flex items-start justify-between pb-6">
+                    <div className="flex items-center gap-4">
+                      {company.show_logo && company.logo_url ? (
+                        <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
+                      ) : company.show_logo ? (
+                        <div style={{ backgroundColor: accentColor }} className="w-12 h-12 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">logo</span>
+                        </div>
+                      ) : null}
+                      {company.show_company_name && (
+                        <div>
+                          <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                          {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <h2 style={{ color: accentColor }} className="text-2xl font-bold mb-1">INVOICE</h2>
+                      <p className="text-slate-600 font-medium text-sm">{invoice.invoice_number}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <h2 style={{ color: accentColor }} className="text-2xl font-bold mb-1">INVOICE</h2>
-                    <p className="text-slate-600 font-medium text-sm">{invoice.invoice_number}</p>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
+                      <p className="text-slate-700 font-semibold">{company.company_name}</p>
+                      {company.address && <p className="text-slate-600">{company.address}</p>}
+                      {company.phone && <p className="text-slate-600">{company.phone}</p>}
+                    </div>
+                    <div>
+                      <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
+                      <p className="text-slate-700 font-semibold">{customer.name}</p>
+                      {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
+                      {customer.phone && <p className="text-slate-600">{customer.phone}</p>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
-                    <p className="text-slate-700 font-semibold">{company.company_name}</p>
-                    {company.address && <p className="text-slate-600">{company.address}</p>}
-                    {company.phone && <p className="text-slate-600">{company.phone}</p>}
-                  </div>
-                  <div>
-                    <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
-                    <p className="text-slate-700 font-semibold">{customer.name}</p>
-                    {customer.company_name && <p className="text-slate-600">{customer.company_name}</p>}
-                    {customer.phone && <p className="text-slate-600">{customer.phone}</p>}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded p-3 border border-slate-200 text-xs space-y-1">
+                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1">
                   <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{job.title}</span></div>
                   <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{formatDate(invoice.due_date)}</span></div>
                 </div>
 
                 <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
 
-                <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
+                <div className="border border-slate-300 rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
                   <thead style={{ backgroundColor: accentColor }}>
                     <tr>
                       <th className="text-left px-2 py-2 font-semibold text-white">Description</th>
@@ -473,20 +476,21 @@ export default function EditInvoice() {
                     ))}
                   </tbody>
                 </table>
+                </div>
 
                 <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
 
-                <div className="flex justify-end text-xs space-y-1">
+                <div className="border border-slate-300 rounded-lg p-4 flex justify-end">
                   <div className="w-40">
-                    <div className="flex justify-between text-slate-600 pb-1">
+                    <div className="flex justify-between text-slate-600 pb-1 text-xs">
                       <span>Subtotal:</span>
                       <span>${subtotal.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between text-slate-600 pb-2">
+                    <div className="flex justify-between text-slate-600 pb-2 text-xs">
                       <span>Tax:</span>
                       <span>${taxAmount.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold pt-2" style={{ borderTop: `2px solid ${accentColor}`, color: accentColor }}>
+                    <div className="flex justify-between font-bold pt-2 text-xs" style={{ borderTop: `2px solid ${accentColor}`, color: accentColor }}>
                       <span>Total:</span>
                       <span>${total.toFixed(2)}</span>
                     </div>
@@ -495,7 +499,7 @@ export default function EditInvoice() {
 
                 <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
+                <div className="bg-slate-50 border border-slate-300 rounded-lg p-4 text-xs">
                   <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
                   <p className="text-slate-600 mb-2">Payment is due within 30 days</p>
                   <div className="bg-white border border-slate-200 rounded p-2 text-slate-700">
