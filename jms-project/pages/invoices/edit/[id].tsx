@@ -261,12 +261,15 @@ export default function EditInvoice() {
     if (!invoice || !customer) return;
     setSendingEmail(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user?.email) throw new Error('User email not found');
       const response = await fetch('/api/email/send-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           invoiceId: invoice.id,
           recipientEmail: customer.email || '',
+          senderEmail: user.email,
         }),
       });
       const data = await response.json();

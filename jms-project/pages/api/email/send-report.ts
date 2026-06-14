@@ -9,9 +9,9 @@ const supabase = createClient(
 export default async function handler(_req: NextApiRequest, res: NextApiResponse) {
   if (_req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { reportId, recipientEmail, message } = _req.body;
-  if (!reportId || !recipientEmail) {
-    return res.status(400).json({ error: 'reportId and recipientEmail are required.' });
+  const { reportId, recipientEmail, senderEmail, message } = _req.body;
+  if (!reportId || !recipientEmail || !senderEmail) {
+    return res.status(400).json({ error: 'reportId, recipientEmail, and senderEmail are required.' });
   }
 
   try {
@@ -44,21 +44,7 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       .single();
 
     const companyName = settings?.company_name || 'Service Report';
-
-    // Get authenticated user's email using admin API
-    let fromEmail = '';
-    try {
-      const { data, error } = await supabase.auth.admin.getUserById(report.user_id);
-      if (error) throw error;
-      fromEmail = data?.user?.email || '';
-    } catch (err: any) {
-      console.error('Failed to get user email:', err);
-      return res.status(400).json({ error: `Failed to get user email: ${err.message}` });
-    }
-
-    if (!fromEmail) {
-      return res.status(400).json({ error: 'User email not found in authentication system.' });
-    }
+    const fromEmail = senderEmail;
 
     // Generate HTML report
     const html = `
