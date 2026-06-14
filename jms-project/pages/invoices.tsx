@@ -185,6 +185,8 @@ export default function InvoicesPage() {
                     <th className="px-4 py-3 text-right text-slate-400 font-medium">Paid</th>
                     <th className="px-4 py-3 text-left text-slate-400 font-medium">Due Date</th>
                     <th className="px-4 py-3 text-left text-slate-400 font-medium">Status</th>
+                    <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs">Email Sent</th>
+                    <th className="px-4 py-3 text-left text-slate-400 font-medium text-xs">Last Viewed</th>
                     <th className="px-4 py-3 text-left text-slate-400 font-medium">Action</th>
                   </tr>
                 </thead>
@@ -210,6 +212,12 @@ export default function InvoicesPage() {
                           }`}>
                             {inv.status}
                           </span>
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">
+                          {inv.last_email_sent_at ? format(new Date(inv.last_email_sent_at), 'dd MMM HH:mm') : '—'}
+                        </td>
+                        <td className="px-4 py-3 text-slate-400 text-xs">
+                          {inv.last_viewed_at ? format(new Date(inv.last_viewed_at), 'dd MMM HH:mm') : 'Not viewed'}
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-2">

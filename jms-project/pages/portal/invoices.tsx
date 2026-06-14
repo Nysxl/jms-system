@@ -68,6 +68,9 @@ export default function PortalInvoices() {
         console.warn('Failed to load company settings:', err);
         setCompany({ company_name: 'Company Name', show_logo: true, show_company_name: true, invoice_accent_color: '#3b82f6' });
       }
+
+      // Track that invoice was viewed
+      await supabase.from('invoices').update({ last_viewed_at: new Date().toISOString() }).eq('id', invoice.id);
     } catch (err) {
       console.error('Failed to load invoice details:', err);
       setSelectedInvoice(null);

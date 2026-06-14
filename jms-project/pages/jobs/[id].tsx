@@ -772,28 +772,34 @@ export default function JobDetail() {
                     <div className="mt-4 space-y-2">
                       <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide">Saved Invoices</p>
                       {invoices.map((inv: any) => (
-                        <div key={inv.id} className="bg-slate-900 rounded-lg px-3 py-2 flex items-center justify-between group">
-                          <div>
-                            <p className="text-white text-sm font-medium">{inv.invoice_number}</p>
-                            <p className="text-slate-500 text-xs">{new Date(inv.created_at).toLocaleDateString()}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <div className="text-right mr-2">
-                              <p className="text-white text-sm font-semibold">${(inv.total_amount || 0).toFixed(2)}</p>
-                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                                inv.status === 'paid' ? 'bg-green-500/20 text-green-400' :
-                                inv.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
-                                'bg-slate-600 text-slate-400'
-                              }`}>{inv.status}</span>
+                        <div key={inv.id} className="bg-slate-900 rounded-lg px-3 py-3 space-y-1.5">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-white text-sm font-medium">{inv.invoice_number}</p>
+                              <p className="text-slate-500 text-xs">{new Date(inv.created_at).toLocaleDateString()}</p>
                             </div>
-                            <button onClick={() => router.push(`/invoices/edit/${inv.id}`)}
-                              className="text-slate-300 hover:text-white text-xs font-medium transition">
-                              ✏️ Open
-                            </button>
-                            <button onClick={() => sendInvoiceEmail(inv)} disabled={sendingInvoiceEmail === inv.id}
-                              className="text-green-400 hover:text-green-300 disabled:opacity-50 text-xs font-medium transition">
-                              {sendingInvoiceEmail === inv.id ? '📧 Sending...' : '📧 Email'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              <div className="text-right">
+                                <p className="text-white text-sm font-semibold">${(inv.total_amount || 0).toFixed(2)}</p>
+                                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                  inv.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                                  inv.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
+                                  'bg-slate-600 text-slate-400'
+                                }`}>{inv.status}</span>
+                              </div>
+                              <button onClick={() => router.push(`/invoices/edit/${inv.id}`)}
+                                className="text-slate-300 hover:text-white text-xs font-medium transition">
+                                ✏️ Open
+                              </button>
+                              <button onClick={() => sendInvoiceEmail(inv)} disabled={sendingInvoiceEmail === inv.id}
+                                className="text-green-400 hover:text-green-300 disabled:opacity-50 text-xs font-medium transition">
+                                {sendingInvoiceEmail === inv.id ? '📧 Sending...' : '📧 Email'}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="flex gap-4 text-xs text-slate-400">
+                            <div>Email sent: <span className="text-slate-300">{inv.last_email_sent_at ? new Date(inv.last_email_sent_at).toLocaleString() : '—'}</span></div>
+                            <div>Last viewed: <span className="text-slate-300">{inv.last_viewed_at ? new Date(inv.last_viewed_at).toLocaleString() : 'Not viewed'}</span></div>
                           </div>
                         </div>
                       ))}

@@ -119,9 +119,12 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       return res.status(500).json({ error: result.error.message });
     }
 
-    // Update invoice status to 'sent' if it was draft
+    // Update invoice status to 'sent' if it was draft and track email sent time
+    const now = new Date().toISOString();
     if (invoice.status === 'draft') {
-      await supabase.from('invoices').update({ status: 'sent' }).eq('id', invoiceId);
+      await supabase.from('invoices').update({ status: 'sent', last_email_sent_at: now }).eq('id', invoiceId);
+    } else {
+      await supabase.from('invoices').update({ last_email_sent_at: now }).eq('id', invoiceId);
     }
 
     return res.status(200).json({ success: true, message: `Invoice sent to ${recipientEmail}` });
