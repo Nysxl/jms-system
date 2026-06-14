@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
-import FormData from 'form-data';
-import Mailgun from 'mailgun.js';
+// @ts-ignore
+import sgMail from '@sendgrid/mail';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -17,12 +17,11 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
   }
 
   try {
-    if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
-      return res.status(501).json({ error: 'Email service not configured. Set MAILGUN_API_KEY and MAILGUN_DOMAIN environment variables.' });
+    if (!process.env.SENDGRID_API_KEY) {
+      return res.status(501).json({ error: 'Email service not configured. Set SENDGRID_API_KEY environment variable.' });
     }
 
-    const mailgun = new Mailgun(FormData);
-    const client = mailgun.client({ key: process.env.MAILGUN_API_KEY });
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
 
     // Fetch invoice + job + company details
     const { data: invoice } = await supabase
@@ -95,19 +94,16 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       </html>
     `;
 
-    // Send email via Mailgun
-    const messageData = {
-      from: `${companyName} <${fromEmail}>`,
+    // Send email via SendGrid
+    const msg = {
       to: recipientEmail,
+      from: fromEmail,
+      replyTo: fromEmail,
       subject: `Invoice #${invoice.invoice_number}`,
       html,
     };
 
-    const result = await client.messages.create(process.env.MAILGUN_DOMAIN!, messageData);
-
-    if (!result.id) {
-      return res.status(500).json({ error: 'Failed to send email' });
-    }
+    await sgMail.send(msg);
 
     // Update invoice status to 'sent' if it was draft and track email sent time
     const now = new Date().toISOString();
