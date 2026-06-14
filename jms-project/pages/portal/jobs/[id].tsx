@@ -34,6 +34,7 @@ export default function PortalJobDetail() {
   const [notes, setNotes] = useState<JobNote[]>([]);
   const [images, setImages] = useState<JobImage[]>([]);
   const [attachments, setAttachments] = useState<JobAttachment[]>([]);
+  const [invoices, setInvoices] = useState<any[]>([]);
   const [newNote, setNewNote] = useState('');
   const [savingNote, setSavingNote] = useState(false);
   const [showSignature, setShowSignature] = useState(false);
@@ -84,6 +85,16 @@ export default function PortalJobDetail() {
     if (imagesData) setImages(imagesData);
     const { data: attachData } = await supabase.from('job_attachments').select('*').eq('job_id', id).order('uploaded_at', { ascending: false });
     if (attachData) setAttachments(attachData);
+    // Load invoices for this job that are billed to the current customer
+    if (jobData && portalUser) {
+      const { data: invoiceData } = await supabase.from('invoices')
+        .select('*')
+        .eq('job_id', id)
+        .eq('customer_id', portalUser.customer_id)
+        .neq('status', 'draft')
+        .order('created_at', { ascending: false });
+      if (invoiceData) setInvoices(invoiceData);
+    }
     setIsLoading(false);
   };
 
@@ -486,6 +497,40 @@ export default function PortalJobDetail() {
             </div>
           )}
         </div>
+
+        {/* Invoices */}
+        {invoices.length > 0 && (
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-6 mb-6">
+            <h3 className="text-white font-semibold mb-4">💰 Invoices</h3>
+            <div className="space-y-3">
+              {invoices.map(invoice => (
+                <div key={invoice.id} className="bg-slate-900 rounded-lg p-4 border border-slate-700">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="text-white font-medium">Invoice #{invoice.invoice_number || invoice.id.slice(0, 8)}</p>
+                      <p className="text-slate-400 text-xs">Created {new Date(invoice.created_at).toLocaleDateString()}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-white font-semibold">${(invoice.total || 0).toFixed(2)}</p>
+                      <span className={`text-xs px-2 py-1 rounded ${
+                        invoice.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
+                        invoice.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                        'bg-slate-600/20 text-slate-400'
+                      }`}>
+                        {invoice.status || 'pending'}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-slate-400 text-xs mb-3">Due {new Date(invoice.due_date).toLocaleDateString()}</p>
+                  <a href={invoice.pdf_url} target="_blank" rel="noopener noreferrer"
+                    className="inline-block bg-blue-600 hover:bg-blue-500 text-white text-xs px-3 py-1.5 rounded transition">
+                    View Invoice
+                  </a>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Digital Signature */}
         {job.status === 'completed' && (
