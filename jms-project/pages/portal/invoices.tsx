@@ -7,10 +7,12 @@ import { PortalUser } from '@/lib/types';
 const printStyles = `
   @media print {
     body { margin: 0; padding: 0; background: white; }
-    * { box-shadow: none !important; }
+    * { box-shadow: none !important; margin: 0 !important; padding: 0 !important; }
+    body > * { display: none !important; }
+    .invoice-modal-backdrop { display: flex !important; position: static !important; background: white !important; }
+    .invoice-modal { position: static !important; max-height: none !important; overflow: visible !important; box-shadow: none !important; border: none !important; }
     .print-hidden { display: none !important; }
-    .invoice-modal { position: static !important; }
-    .invoice-modal-backdrop { display: none !important; }
+    #invoice-document { margin: 0 !important; padding: 0 !important; }
   }
 `;
 
