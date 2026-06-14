@@ -70,6 +70,7 @@ export default function EditInvoice() {
   const [isDownloading, setIsDownloading] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [editForm, setEditForm] = useState({ status: '', due_date: '', notes: '' });
+  const [accentColor, setAccentColor] = useState('#3b82f6');
 
   useEffect(() => {
     if (id) loadInvoice();
@@ -95,7 +96,10 @@ export default function EditInvoice() {
         ]);
         if (jobRes.data) setJob(jobRes.data);
         if (custRes.data) setCustomer(custRes.data);
-        if (compRes.data) setCompany(compRes.data);
+        if (compRes.data) {
+          setCompany(compRes.data);
+          setAccentColor(compRes.data.invoice_accent_color || '#3b82f6');
+        }
       }
       if (itemsRes.data) setItems(itemsRes.data);
     } finally {
@@ -208,6 +212,29 @@ export default function EditInvoice() {
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const downloadPdf = () => {
+    const element = document.getElementById('invoice-document');
+    if (!element) return;
+    setIsDownloading(true);
+    const opt = {
+      margin: 10,
+      filename: `${invoice?.invoice_number}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+    };
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      (window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+    };
+    script.onerror = () => {
+      alert('Failed to load PDF generator');
+      setIsDownloading(false);
+    };
+    document.body.appendChild(script);
   };
 
   const handleDelete = async () => {
@@ -393,33 +420,31 @@ export default function EditInvoice() {
           {showPreview && job && customer && company && (
             <div className="bg-white rounded-xl overflow-hidden shadow-lg flex flex-col">
               <div className="bg-slate-100 px-4 py-3 border-b border-slate-200 flex gap-2">
-                <button onClick={() => window.print()}
-                  className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition">
-                  🖨️ Print
-                </button>
                 <button onClick={downloadPdf} disabled={isDownloading}
                   className="text-sm bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-3 py-1.5 rounded transition">
                   {isDownloading ? '📥 Downloading...' : '📥 Download PDF'}
                 </button>
               </div>
               <div className="p-8 space-y-6 max-h-[calc(90vh-60px)] overflow-y-auto">
-                <div id="invoice-document" className="bg-white">
-                <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
+                <div id="invoice-document" className="bg-white" style={{ '--accent-color': accentColor } as React.CSSProperties}>
+                <div className="flex items-start justify-between pb-6" style={{ borderBottom: `2px solid ${accentColor}` }}>
                   <div className="flex items-center gap-4">
-                    {company.logo_url ? (
+                    {company.show_logo && company.logo_url ? (
                       <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
-                    ) : (
-                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                    ) : company.show_logo ? (
+                      <div style={{ backgroundColor: accentColor }} className="w-12 h-12 rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-sm">logo</span>
                       </div>
+                    ) : null}
+                    {company.show_company_name && (
+                      <div>
+                        <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                        {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                      </div>
                     )}
-                    <div>
-                      <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
-                      {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
-                    </div>
                   </div>
                   <div className="text-right">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-1">INVOICE</h2>
+                    <h2 style={{ color: accentColor }} className="text-2xl font-bold mb-1">INVOICE</h2>
                     <p className="text-slate-600 font-medium text-sm">{invoice.invoice_number}</p>
                   </div>
                 </div>
