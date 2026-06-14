@@ -236,7 +236,7 @@ export default function PortalInvoices() {
                 <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
 
                 <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
-                  <thead style={{ backgroundColor: company.invoice_accent_color || '#3b82f6', backgroundOpacity: 0.1 }}>
+                  <thead style={{ backgroundColor: (company.invoice_accent_color || '#3b82f6') + '15' }}>
                     <tr>
                       <th className="text-left px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Description</th>
                       <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Qty</th>
