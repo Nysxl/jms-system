@@ -33,6 +33,7 @@ export default function PortalInvoices() {
         .from('invoices')
         .select('*')
         .eq('customer_id', portalUser.customer_id)
+        .neq('status', 'draft')
         .order('created_at', { ascending: false });
 
       if (error) throw error;
