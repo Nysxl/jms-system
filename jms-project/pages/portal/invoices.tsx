@@ -234,12 +234,12 @@ export default function PortalInvoices() {
                 </div>
 
                 <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
-                  <thead className="bg-slate-100">
+                  <thead style={{ backgroundColor: company.invoice_accent_color || '#3b82f6', backgroundOpacity: 0.1 }}>
                     <tr>
-                      <th className="text-left px-2 py-2 text-slate-600 font-semibold">Description</th>
-                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Qty</th>
-                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Unit Price</th>
-                      <th className="text-right px-2 py-2 text-slate-600 font-semibold">Total</th>
+                      <th className="text-left px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Description</th>
+                      <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Qty</th>
+                      <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Unit Price</th>
+                      <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Total</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -266,7 +266,7 @@ export default function PortalInvoices() {
                       <span>Tax:</span>
                       <span>${(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold text-slate-900 border-t border-slate-200 pt-2">
+                    <div className="flex justify-between font-bold pt-2" style={{ borderTop: `2px solid ${company.invoice_accent_color || '#3b82f6'}`, color: company.invoice_accent_color || '#3b82f6' }}>
                       <span>Total:</span>
                       <span>${(selectedInvoice.total_amount || 0).toFixed(2)}</span>
                     </div>
