@@ -4,6 +4,16 @@ import { PortalHeader } from '@/components/PortalHeader';
 import { supabase } from '@/lib/supabase';
 import { PortalUser } from '@/lib/types';
 
+const printStyles = `
+  @media print {
+    body { margin: 0; padding: 0; background: white; }
+    * { box-shadow: none !important; }
+    .print-hidden { display: none !important; }
+    .invoice-modal { position: static !important; }
+    .invoice-modal-backdrop { display: none !important; }
+  }
+`;
+
 export default function PortalInvoices() {
   const router = useRouter();
   const [portalUser, setPortalUser] = useState<PortalUser | null>(null);
@@ -114,6 +124,7 @@ export default function PortalInvoices() {
 
   return (
     <div className="min-h-screen bg-slate-950">
+      <style>{printStyles}</style>
       <PortalHeader portalUserEmail={portalUser.email} />
       <main className="max-w-4xl mx-auto px-6 py-8">
         <div className="mb-8">
@@ -175,9 +186,9 @@ export default function PortalInvoices() {
         )}
 
         {selectedInvoice && invoiceJob && company && (
-          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-4">
-            <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
-              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0">
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-4 print-hidden invoice-modal-backdrop">
+            <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl invoice-modal">
+              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0 print-hidden">
                 <h3 className="text-lg font-semibold text-slate-900">{selectedInvoice.invoice_number}</h3>
                 <div className="flex gap-2 items-center">
                   <button onClick={() => window.print()} className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition">
