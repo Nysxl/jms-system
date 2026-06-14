@@ -100,7 +100,6 @@ export default function JobDetail() {
 
   // Photos
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [togglingImages, setTogglingImages] = useState<Set<string>>(new Set());
   const fileRef = useRef<HTMLInputElement>(null);
   const [photoTimestamp, setPhotoTimestamp] = useState('');
   const [editingImageTimestamp, setEditingImageTimestamp] = useState<string | null>(null);
