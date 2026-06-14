@@ -89,23 +89,50 @@ export default function PortalInvoices() {
     const element = document.getElementById('invoice-document');
     if (!element) return;
     setIsDownloading(true);
-    const opt = {
-      margin: 10,
-      filename: `${selectedInvoice.invoice_number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+
+    // Wait for images to load before generating PDF
+    const images = element.querySelectorAll('img');
+    let loadedCount = 0;
+
+    const onImageLoad = () => {
+      loadedCount++;
+      if (loadedCount === images.length || images.length === 0) {
+        generatePdf();
+      }
     };
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    script.onload = () => {
-      (window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+
+    if (images.length > 0) {
+      images.forEach(img => {
+        if (img.complete) {
+          onImageLoad();
+        } else {
+          img.onload = onImageLoad;
+          img.onerror = onImageLoad;
+        }
+      });
+    } else {
+      generatePdf();
+    }
+
+    const generatePdf = () => {
+      const opt = {
+        margin: 10,
+        filename: `${selectedInvoice.invoice_number}.pdf`,
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, allowTaint: true },
+        jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+      };
+      const script = document.createElement('script');
+      script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+      script.onload = () => {
+        (window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+      };
+      script.onerror = () => {
+        alert('Failed to load PDF generator');
+        setIsDownloading(false);
+      };
+      document.body.appendChild(script);
     };
-    script.onerror = () => {
-      alert('Failed to load PDF generator');
-      setIsDownloading(false);
-    };
-    document.body.appendChild(script);
   };
 
   const totalOwed = invoices.filter(i => i.status !== 'paid').reduce((s: number, i: any) => s + ((i.total_amount || 0) - (i.amount_paid || 0)), 0);
