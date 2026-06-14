@@ -71,6 +71,7 @@ export default function EditInvoice() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [showPreview, setShowPreview] = useState(true);
   const [editForm, setEditForm] = useState({ status: '', due_date: '', notes: '' });
   const [accentColor, setAccentColor] = useState('#3b82f6');
@@ -256,6 +257,28 @@ export default function EditInvoice() {
     }
   };
 
+  const sendInvoiceEmail = async () => {
+    if (!invoice || !customer) return;
+    setSendingEmail(true);
+    try {
+      const response = await fetch('/api/email/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          recipientEmail: customer.email || '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      alert(`Invoice sent to ${customer.email}`);
+    } catch (err: any) {
+      alert(`Failed to send invoice: ${err.message}`);
+    } finally {
+      setSendingEmail(false);
+    }
+  };
+
   if (isLoading) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Loading...</p></div>;
   if (!invoice) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Invoice not found</p></div>;
 
@@ -388,6 +411,10 @@ export default function EditInvoice() {
             <button onClick={() => setShowPreview(!showPreview)}
               className="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-3 rounded-lg transition">
               {showPreview ? '👁️ Hide Preview' : '👁️ Show Preview'}
+            </button>
+            <button onClick={sendInvoiceEmail} disabled={sendingEmail}
+              className="bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
+              {sendingEmail ? '📧 Sending...' : '📧 Send Email'}
             </button>
             <button onClick={() => setDeleteConfirm(true)}
               className="bg-red-500/10 hover:bg-red-500/20 text-red-400 font-semibold px-6 py-3 rounded-lg transition">
