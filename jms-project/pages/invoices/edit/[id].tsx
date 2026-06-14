@@ -43,6 +43,9 @@ interface CompanySettings {
   logo_url: string;
   bsb?: string;
   account_number?: string;
+  show_logo?: boolean;
+  show_company_name?: boolean;
+  invoice_accent_color?: string;
 }
 
 const printStyles = `
