@@ -15,6 +15,16 @@ interface JobAttachment {
   uploaded_at: string;
 }
 
+const fileIcon = (type: string) => {
+  if (type.startsWith('image/')) return '🖼️';
+  if (type === 'application/pdf') return '📄';
+  if (type.includes('word')) return '📝';
+  if (type.includes('sheet') || type.includes('excel')) return '📊';
+  if (type.includes('presentation') || type.includes('powerpoint')) return '📑';
+  if (type.includes('zip') || type.includes('compressed')) return '🗜️';
+  return '📎';
+};
+
 export default function PortalJobDetail() {
   const router = useRouter();
   const { id } = router.query;
@@ -334,12 +344,13 @@ export default function PortalJobDetail() {
           {adminImages.length > 0 && (
             <div className="mt-6 pt-6 border-t border-slate-700">
               <h4 className="text-slate-300 font-medium text-sm mb-3">📸 {(job as any)?.admin_company_name || 'Admin'} Photos</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {adminImages.filter(img => !(img.is_internal as any)).map(img => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
-                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
-                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
+                    <div className="p-2 flex gap-2">
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
                     </div>
                   </div>
                 ))}
@@ -355,12 +366,13 @@ export default function PortalJobDetail() {
             {customerImages.length === 0 ? (
               <p className="text-slate-500 text-sm">No photos yet</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {customerImages.map(img => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
-                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
-                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
+                    <div className="p-2 flex gap-2">
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
                     </div>
                   </div>
                 ))}
@@ -372,17 +384,21 @@ export default function PortalJobDetail() {
           {attachments.filter((att: any) => att.author_type === 'admin').length > 0 && (
             <div className="mt-6 pt-6 border-t border-slate-700">
               <h4 className="text-slate-300 font-medium text-sm mb-3">📎 {(job as any)?.admin_company_name || 'Admin'} Documents</h4>
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {attachments.filter((att: any) => att.author_type === 'admin' && !(att.is_internal as any)).map(att => (
-                  <a key={att.id} href={att.file_url} download={att.file_name} className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium text-sm truncate">{att.file_name}</p>
-                        <p className="text-slate-400 text-xs">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <span className="text-slate-400 ml-2">↓</span>
+                  <div key={att.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
+                    <div className="bg-slate-800 p-4 flex items-center justify-center min-h-24">
+                      <span className="text-4xl">{fileIcon(att.file_type)}</span>
                     </div>
-                  </a>
+                    <div className="p-3 flex-1 flex flex-col">
+                      <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                      <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
+                      <div className="flex gap-1">
+                        <a href={att.file_url} download={att.file_name}
+                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -396,17 +412,21 @@ export default function PortalJobDetail() {
             {attachments.filter((att: any) => att.author_type === 'portal_user').length === 0 ? (
               <p className="text-slate-500 text-sm">No documents yet</p>
             ) : (
-              <div className="space-y-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                 {attachments.filter((att: any) => att.author_type === 'portal_user').map(att => (
-                  <a key={att.id} href={att.file_url} download={att.file_name} className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1 min-w-0">
-                        <p className="text-white font-medium text-sm truncate">{att.file_name}</p>
-                        <p className="text-slate-400 text-xs">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      </div>
-                      <span className="text-slate-400 ml-2">↓</span>
+                  <div key={att.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
+                    <div className="bg-slate-800 p-4 flex items-center justify-center min-h-24">
+                      <span className="text-4xl">{fileIcon(att.file_type)}</span>
                     </div>
-                  </a>
+                    <div className="p-3 flex-1 flex flex-col">
+                      <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                      <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
+                      <div className="flex gap-1">
+                        <a href={att.file_url} download={att.file_name}
+                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
+                      </div>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -433,12 +453,13 @@ export default function PortalJobDetail() {
           {adminImages.length > 0 && (
             <div className="mt-6 pt-6 border-t border-slate-700">
               <h4 className="text-slate-300 font-medium text-sm mb-3">Admin Photos</h4>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {adminImages.map(img => (
-                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
-                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover" />
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
-                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                  <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
+                    <div className="p-2 flex gap-2">
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
                     </div>
                   </div>
                 ))}

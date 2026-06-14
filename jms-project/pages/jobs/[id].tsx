@@ -868,13 +868,14 @@ export default function JobDetail() {
                 {/* Customer Photos */}
                 {images.filter(img => img.author_type === 'portal_user').length > 0 && (
                   <div className="mb-4 pb-4 border-b border-slate-700">
-                    <p className="text-indigo-300 text-xs font-medium mb-2">👤 Customer Photos</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <p className="text-indigo-300 text-xs font-medium mb-3">👤 Customer Photos</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {images.filter(img => img.author_type === 'portal_user').map(img => (
-                        <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
-                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
-                            <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                        <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" onClick={() => setLightbox(img.image_url)} />
+                          <div className="p-2 flex gap-2 items-center justify-center">
+                            <button onClick={() => setLightbox(img.image_url)} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
+                            <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
                           </div>
                         </div>
                       ))}
@@ -885,34 +886,37 @@ export default function JobDetail() {
                 {/* Your Photos */}
                 {images.filter(img => img.author_type === 'admin').length > 0 && (
                   <div>
-                    <p className="text-slate-300 text-xs font-medium mb-2">📸 Your Photos</p>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    <p className="text-slate-300 text-xs font-medium mb-3">📸 Your Photos</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {images.filter(img => img.author_type === 'admin').map(img => (
-                        <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
-                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
-                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
-                            <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
-                          </div>
-                          <button onClick={async () => {
-                            await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
-                            loadImages();
-                          }} className={`absolute top-1 left-1 rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition ${(img.is_internal as any) ? 'bg-orange-500 text-white' : 'bg-blue-500 text-white'}`}>{(img.is_internal as any) ? '🔒' : '👁'}</button>
-                          <button onClick={() => handleDeletePhoto(img)} className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 text-xs hidden group-hover:flex items-center justify-center transition">✕</button>
-                          <div className="px-2 py-1 bg-slate-800/90">
+                        <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
+                          <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" onClick={() => setLightbox(img.image_url)} />
+                          <div className="p-3 space-y-2">
                             {editingImageTimestamp === img.id ? (
                               <div className="flex items-center gap-1">
                                 <input type="datetime-local" value={editingImageTs} onChange={e => setEditingImageTs(e.target.value)}
-                                  className="flex-1 bg-slate-700 border border-slate-500 text-slate-200 rounded px-1 py-0.5 text-xs focus:outline-none" />
-                                <button onClick={() => saveImageTimestamp(img.id)} className="text-green-400 text-xs transition">✓</button>
-                                <button onClick={() => setEditingImageTimestamp(null)} className="text-slate-500 text-xs transition">✕</button>
+                                  className="flex-1 bg-slate-600 border border-slate-500 text-slate-200 rounded px-2 py-1 text-xs focus:outline-none" />
+                                <button onClick={() => saveImageTimestamp(img.id)} className="text-green-400 text-xs hover:text-green-300 transition">✓</button>
+                                <button onClick={() => setEditingImageTimestamp(null)} className="text-slate-500 text-xs hover:text-slate-400 transition">✕</button>
                               </div>
                             ) : (
                               <button onClick={() => { setEditingImageTimestamp(img.id); setEditingImageTs((img.display_timestamp || img.uploaded_at).slice(0, 16)); }}
-                                className="text-slate-500 hover:text-slate-300 text-xs transition w-full text-left truncate">
+                                className="text-slate-400 hover:text-slate-300 text-xs transition w-full text-left truncate px-1">
                                 {formatDateTime(img.display_timestamp || img.uploaded_at)}
                                 {img.display_timestamp && img.display_timestamp !== img.uploaded_at && <span className="ml-1 text-yellow-600">✎</span>}
                               </button>
                             )}
+                            <div className="flex gap-2">
+                              <button onClick={() => setLightbox(img.image_url)} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁</button>
+                              <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
+                              <button onClick={async () => {
+                                await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
+                                loadImages();
+                              }} className={`flex-1 text-white text-xs px-2 py-1.5 rounded transition ${(img.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
+                                {(img.is_internal as any) ? '🔒' : '👁'}
+                              </button>
+                              <button onClick={() => handleDeletePhoto(img)} className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs px-2 py-1.5 rounded transition">✕</button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -946,52 +950,59 @@ export default function JobDetail() {
                     <p className="text-slate-400 text-sm">Click to attach files — PDFs, Word docs, spreadsheets, and more</p>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {attachments.length > 0 && (
                       <input type="text" value={attachmentSearch} onChange={e => setAttachmentSearch(e.target.value)}
                         placeholder="Search by filename or uploader..."
                         className="w-full bg-slate-900 border border-slate-700 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500" />
                     )}
-                    {attachments.filter(att => {
-                      const q = attachmentSearch.toLowerCase();
-                      return (att.file_name?.toLowerCase().includes(q) ||
-                              (att.uploader_email as any)?.toLowerCase().includes(q));
-                    }).map(att => (
-                      <div key={att.id} className="flex items-center gap-3 bg-slate-900 rounded-lg px-4 py-3 group">
-                        <span className="text-2xl flex-shrink-0">{fileIcon(att.file_type)}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm font-medium truncate">{att.file_name}</p>
-                          <p className="text-slate-500 text-xs">{formatSize(att.file_size)} · {formatDate(att.uploaded_at)} · {(att.uploader_email as any) || 'Unknown'}</p>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                      {attachments.filter(att => {
+                        const q = attachmentSearch.toLowerCase();
+                        return (att.file_name?.toLowerCase().includes(q) ||
+                                (att.uploader_email as any)?.toLowerCase().includes(q));
+                      }).map(att => (
+                        <div key={att.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
+                          <div className="bg-slate-800 p-4 flex items-center justify-center min-h-24">
+                            <span className="text-4xl">{fileIcon(att.file_type)}</span>
+                          </div>
+                          <div className="p-3 flex-1 flex flex-col">
+                            <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
+                            <p className="text-slate-500 text-xs mb-3 flex-1">{formatSize(att.file_size)}</p>
+                            <div className="flex gap-1 flex-col text-xs">
+                              <div className="flex gap-1">
+                                {att.file_type === 'application/pdf' ? (
+                                  <button onClick={() => setPreviewAttachment(att)}
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">👁</button>
+                                ) : att.file_type.startsWith('image/') ? (
+                                  <button onClick={() => setLightbox(att.file_url)}
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">👁</button>
+                                ) : (
+                                  <a href={att.file_url} target="_blank" rel="noopener noreferrer"
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">↗</a>
+                                )}
+                                <a href={att.file_url} download={att.file_name}
+                                  className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">↓</a>
+                              </div>
+                              <div className="flex gap-1">
+                                <button onClick={async () => {
+                                  await supabase.from('job_attachments').update({ is_internal: !(att.is_internal as any) }).eq('id', att.id);
+                                  loadAttachments();
+                                }}
+                                  className={`flex-1 px-2 py-1.5 rounded transition ${(att.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
+                                  {(att.is_internal as any) ? '🔒' : '👁'}
+                                </button>
+                                <button onClick={() => handleDeleteAttachment(att)}
+                                  className="flex-1 bg-red-600 hover:bg-red-500 text-white px-2 py-1.5 rounded transition">✕</button>
+                              </div>
+                            </div>
+                          </div>
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          {att.file_type === 'application/pdf' ? (
-                            <button onClick={() => setPreviewAttachment(att)}
-                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
-                          ) : att.file_type.startsWith('image/') ? (
-                            <button onClick={() => setLightbox(att.file_url)}
-                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">View</button>
-                          ) : (
-                            <a href={att.file_url} target="_blank" rel="noopener noreferrer"
-                              className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">Open</a>
-                          )}
-                          <a href={att.file_url} download={att.file_name}
-                            className="bg-slate-700 hover:bg-slate-600 text-white text-xs px-3 py-1.5 rounded-lg transition">↓</a>
-                          <button onClick={async () => {
-                            await supabase.from('job_attachments').update({ is_internal: !(att.is_internal as any) }).eq('id', att.id);
-                            loadAttachments();
-                          }}
-                            className={`text-xs px-2 py-1.5 rounded-lg transition ${(att.is_internal as any) ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-400'}`}>
-                            {(att.is_internal as any) ? '🔒 Internal' : '👁 Visible'}
-                          </button>
-                          <button onClick={() => handleDeleteAttachment(att)}
-                            className="bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs px-2 py-1.5 rounded-lg transition opacity-0 group-hover:opacity-100">✕</button>
-                        </div>
+                      ))}
+                      <div onClick={() => attachRef.current?.click()}
+                        className="bg-slate-700 rounded-lg border-2 border-dashed border-slate-600 hover:border-blue-500 cursor-pointer transition flex items-center justify-center min-h-40">
+                        <span className="text-slate-500 text-3xl">+</span>
                       </div>
-                    ))}
-                    <div onClick={() => attachRef.current?.click()}
-                      className="flex items-center gap-3 border-2 border-dashed border-slate-700 rounded-lg px-4 py-3 cursor-pointer hover:border-blue-500 transition">
-                      <span className="text-slate-500 text-xl">+</span>
-                      <span className="text-slate-500 text-sm">Add more files</span>
                     </div>
                   </div>
                 )}
