@@ -45,6 +45,16 @@ interface CompanySettings {
   account_number?: string;
 }
 
+const printStyles = `
+  @media print {
+    body { margin: 0; padding: 0; }
+    .print-hidden { display: none !important; }
+    .print-only { display: block !important; }
+    .grid { display: block !important; }
+    .lg\\:grid-cols-2 { grid-template-columns: 1fr !important; }
+  }
+`;
+
 export default function EditInvoice() {
   const router = useRouter();
   const { id } = router.query as { id: string };
@@ -249,13 +259,16 @@ export default function EditInvoice() {
 
   return (
     <div className="min-h-screen bg-slate-950">
-      <Header />
+      <style>{printStyles}</style>
+      <div className="print-hidden">
+        <Header />
+      </div>
       <main className="mx-auto px-6 py-8">
-        <Link href={`/jobs/${invoice.job_id}`} className="text-slate-400 hover:text-slate-300 text-sm mb-4 inline-block">← Back to Job</Link>
+        <Link href={`/jobs/${invoice.job_id}`} className="text-slate-400 hover:text-slate-300 text-sm mb-4 inline-block print-hidden">← Back to Job</Link>
 
         <div className={`grid gap-6 ${showPreview ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
           {/* Edit Form */}
-          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8">
+          <div className="bg-slate-800 border border-slate-700 rounded-xl p-8 print-hidden">
           <h1 className="text-3xl font-bold text-white mb-2">{invoice.invoice_number}</h1>
           <p className="text-slate-400 text-sm mb-6">Issued {new Date(invoice.issue_date).toLocaleDateString()}</p>
 
