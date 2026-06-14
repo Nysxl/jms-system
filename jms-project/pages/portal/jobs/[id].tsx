@@ -336,7 +336,12 @@ export default function PortalJobDetail() {
               <h4 className="text-slate-300 font-medium text-sm mb-3">📸 {(job as any)?.admin_company_name || 'Admin'} Photos</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {adminImages.filter(img => !(img.is_internal as any)).map(img => (
-                  <img key={img.id} src={img.image_url} alt={img.file_name} className="rounded-lg w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
+                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
+                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
@@ -352,7 +357,12 @@ export default function PortalJobDetail() {
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {customerImages.map(img => (
-                  <img key={img.id} src={img.image_url} alt={img.file_name} className="rounded-lg w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
+                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-80" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
+                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                    </div>
+                  </div>
                 ))}
               </div>
             )}
@@ -364,7 +374,7 @@ export default function PortalJobDetail() {
               <h4 className="text-slate-300 font-medium text-sm mb-3">📎 {(job as any)?.admin_company_name || 'Admin'} Documents</h4>
               <div className="space-y-2">
                 {attachments.filter((att: any) => att.author_type === 'admin' && !(att.is_internal as any)).map(att => (
-                  <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
+                  <a key={att.id} href={att.file_url} download={att.file_name} className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-medium text-sm truncate">{att.file_name}</p>
@@ -388,7 +398,7 @@ export default function PortalJobDetail() {
             ) : (
               <div className="space-y-2">
                 {attachments.filter((att: any) => att.author_type === 'portal_user').map(att => (
-                  <a key={att.id} href={att.file_url} target="_blank" rel="noopener noreferrer" className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
+                  <a key={att.id} href={att.file_url} download={att.file_name} className="block bg-slate-700/50 rounded-lg p-3 hover:bg-slate-700 transition">
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <p className="text-white font-medium text-sm truncate">{att.file_name}</p>
@@ -425,7 +435,12 @@ export default function PortalJobDetail() {
               <h4 className="text-slate-300 font-medium text-sm mb-3">Admin Photos</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {adminImages.map(img => (
-                  <img key={img.id} src={img.image_url} alt={img.file_name} className="rounded-lg w-full aspect-square object-cover" />
+                  <div key={img.id} className="relative group rounded-lg overflow-hidden">
+                    <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover" />
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
+                      <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>

@@ -873,6 +873,9 @@ export default function JobDetail() {
                       {images.filter(img => img.author_type === 'portal_user').map(img => (
                         <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
                           <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
+                            <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -887,6 +890,9 @@ export default function JobDetail() {
                       {images.filter(img => img.author_type === 'admin').map(img => (
                         <div key={img.id} className="relative group rounded-lg overflow-hidden bg-slate-700">
                           <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer" onClick={() => setLightbox(img.image_url)} />
+                          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-2 flex gap-1 items-center justify-center hidden group-hover:flex">
+                            <a href={img.image_url} download={img.file_name} className="bg-slate-700 hover:bg-slate-600 text-white rounded text-xs px-2 py-1 transition">↓</a>
+                          </div>
                           <button onClick={async () => {
                             await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
                             loadImages();
