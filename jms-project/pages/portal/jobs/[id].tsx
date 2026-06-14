@@ -273,9 +273,9 @@ export default function PortalJobDetail() {
   if (!job) return <div className="min-h-screen bg-slate-950 flex items-center justify-center"><p className="text-slate-400">Job not found</p></div>;
 
   const customerNotes = notes.filter(n => n.author_type === 'portal_user');
-  const adminNotes = notes.filter(n => n.author_type === 'admin' && !(n.is_internal as any));
+  const adminNotes = notes.filter(n => n.author_type === 'admin' && (n.is_internal as any) !== true);
   const customerImages = images.filter(i => i.author_type === 'portal_user');
-  const adminImages = images.filter(i => i.author_type === 'admin');
+  const adminImages = images.filter(i => i.author_type === 'admin' && (i.is_internal as any) !== true);
 
   return (
     <div className="min-h-screen bg-slate-950">
@@ -383,7 +383,7 @@ export default function PortalJobDetail() {
             <div className="mt-6 pt-6 border-t border-slate-700">
               <h4 className="text-slate-300 font-medium text-sm mb-3">📎 {(job as any)?.admin_company_name || 'Admin'} Documents</h4>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                {attachments.filter((att: any) => att.author_type === 'admin' && !(att.is_internal as any)).map(att => (
+                {attachments.filter((att: any) => att.author_type === 'admin' && (att.is_internal as any) !== true).map(att => (
                   <div key={att.id} className="bg-slate-700 rounded-lg overflow-hidden flex flex-col">
                     <div className="bg-slate-800 p-4 flex items-center justify-center min-h-24">
                       <span className="text-4xl">{fileIcon(att.file_type)}</span>
