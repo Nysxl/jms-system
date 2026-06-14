@@ -214,29 +214,6 @@ export default function EditInvoice() {
     }
   };
 
-  const downloadPdf = () => {
-    const element = document.getElementById('invoice-document');
-    if (!element) return;
-    setIsDownloading(true);
-    const opt = {
-      margin: 10,
-      filename: `${invoice?.invoice_number}.pdf`,
-      image: { type: 'jpeg', quality: 0.98 },
-      html2canvas: { scale: 2 },
-      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
-    };
-    const script = document.createElement('script');
-    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-    script.onload = () => {
-      (window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
-    };
-    script.onerror = () => {
-      alert('Failed to load PDF generator');
-      setIsDownloading(false);
-    };
-    document.body.appendChild(script);
-  };
-
   const handleDelete = async () => {
     if (!invoice) return;
     setIsDeleting(true);
