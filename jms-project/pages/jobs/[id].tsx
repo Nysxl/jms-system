@@ -356,11 +356,17 @@ export default function JobDetail() {
   };
 
   const toggleNoteInternal = async (noteId: string, currentValue: boolean) => {
-    await supabase.from('job_notes').update({
-      is_internal: !currentValue,
+    const newValue = !currentValue;
+    const { error } = await supabase.from('job_notes').update({
+      is_internal: newValue,
       updated_at: new Date().toISOString(),
     }).eq('id', noteId);
-    loadNotes();
+    if (!error) {
+      setNotes(notes.map(n => n.id === noteId ? { ...n, is_internal: newValue } : n));
+    } else {
+      console.error('Error updating note:', error);
+      alert('Failed to update note visibility');
+    }
   };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -832,14 +838,14 @@ export default function JobDetail() {
                             )}
                           </div>
                         </div>
-                        <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition">
+                        <div className="flex flex-col gap-1">
                           <button onClick={() => toggleNoteInternal(note.id, note.is_internal || false)}
-                            className={`text-sm transition ${note.is_internal ? 'text-orange-400 hover:text-orange-300' : 'text-slate-600 hover:text-slate-400'}`}
+                            className={`text-sm transition px-2 py-1 rounded ${note.is_internal ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}
                             title={note.is_internal ? 'Hidden from portal users' : 'Visible to portal users'}>
-                            {note.is_internal ? '🔒' : '👁️'}
+                            {note.is_internal ? 'Hide' : 'Show'}
                           </button>
                           <button onClick={() => handleDeleteNote(note.id)}
-                            className="text-slate-600 hover:text-red-400 text-sm transition">✕</button>
+                            className="bg-red-600 hover:bg-red-500 text-white text-sm px-2 py-1 rounded transition">Delete</button>
                         </div>
                       </div>
                     ))}
