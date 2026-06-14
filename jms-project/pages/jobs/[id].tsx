@@ -189,7 +189,7 @@ export default function JobDetail() {
   };
 
   const loadInvoices = async () => {
-    const { data } = await supabase.from('invoices').select('*').eq('job_id', id).order('created_at', { ascending: false });
+    const { data } = await supabase.from('invoices').select('*, customer:customers(*)').eq('job_id', id).order('created_at', { ascending: false });
     if (data) setInvoices(data);
   };
 
