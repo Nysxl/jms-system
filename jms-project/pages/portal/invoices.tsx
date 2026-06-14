@@ -13,6 +13,7 @@ export default function PortalInvoices() {
   const [invoiceItems, setInvoiceItems] = useState<any[]>([]);
   const [invoiceJob, setInvoiceJob] = useState<any | null>(null);
   const [company, setCompany] = useState<any | null>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   useEffect(() => { checkSession(); }, []);
 
@@ -82,6 +83,29 @@ export default function PortalInvoices() {
       paid: 'bg-green-500/20 text-green-400',
     };
     return map[s] || 'bg-slate-600 text-slate-300';
+  };
+
+  const downloadPdf = () => {
+    const element = document.getElementById('invoice-document');
+    if (!element) return;
+    setIsDownloading(true);
+    const opt = {
+      margin: 10,
+      filename: `${selectedInvoice.invoice_number}.pdf`,
+      image: { type: 'jpeg', quality: 0.98 },
+      html2canvas: { scale: 2 },
+      jsPDF: { orientation: 'portrait', unit: 'mm', format: 'a4' },
+    };
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
+    script.onload = () => {
+      (window as any).html2pdf().set(opt).from(element).save().then(() => setIsDownloading(false));
+    };
+    script.onerror = () => {
+      alert('Failed to load PDF generator');
+      setIsDownloading(false);
+    };
+    document.body.appendChild(script);
   };
 
   const totalOwed = invoices.filter(i => i.status !== 'paid').reduce((s: number, i: any) => s + ((i.total_amount || 0) - (i.amount_paid || 0)), 0);
@@ -155,9 +179,18 @@ export default function PortalInvoices() {
             <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
               <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0">
                 <h3 className="text-lg font-semibold text-slate-900">{selectedInvoice.invoice_number}</h3>
-                <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
+                <div className="flex gap-2 items-center">
+                  <button onClick={() => window.print()} className="text-sm bg-blue-500 hover:bg-blue-600 text-white px-3 py-1.5 rounded transition">
+                    🖨️ Print
+                  </button>
+                  <button onClick={downloadPdf} disabled={isDownloading} className="text-sm bg-green-500 hover:bg-green-600 disabled:opacity-50 text-white px-3 py-1.5 rounded transition">
+                    {isDownloading ? '📥 Downloading...' : '📥 Download PDF'}
+                  </button>
+                  <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
+                </div>
               </div>
               <div className="overflow-y-auto flex-1 p-8 space-y-6">
+                <div id="invoice-document" className="bg-white">
                 <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
                   <div className="flex items-center gap-4">
                     {company.logo_url ? (
@@ -251,6 +284,7 @@ export default function PortalInvoices() {
                       {company.account_number && <p><span className="text-slate-500">Account:</span> {company.account_number}</p>}
                     </div>
                   ) : null}
+                </div>
                 </div>
               </div>
             </div>
