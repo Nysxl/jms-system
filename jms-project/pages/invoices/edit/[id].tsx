@@ -182,6 +182,24 @@ export default function EditInvoice() {
     }
   };
 
+  const submitInvoice = async () => {
+    if (!invoice) return;
+    setIsSaving(true);
+    try {
+      await supabase.from('invoices').update({
+        status: 'sent',
+        updated_at: new Date().toISOString(),
+      }).eq('id', invoice.id);
+      setEditForm({ ...editForm, status: 'sent' });
+      setInvoice({ ...invoice, status: 'sent' });
+      alert('Invoice submitted successfully');
+    } catch (err) {
+      alert('Failed to submit invoice');
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!invoice) return;
     setIsDeleting(true);
@@ -339,8 +357,14 @@ export default function EditInvoice() {
           <div className="flex gap-3 flex-wrap">
             <button onClick={saveChanges} disabled={isSaving}
               className="bg-blue-500 hover:bg-blue-600 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
-              {isSaving ? 'Saving...' : 'Save Changes'}
+              {isSaving ? 'Saving...' : 'Save as Draft'}
             </button>
+            {invoice?.status === 'draft' && (
+              <button onClick={submitInvoice} disabled={isSaving}
+                className="bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition">
+                {isSaving ? 'Submitting...' : 'Submit Invoice'}
+              </button>
+            )}
             <button onClick={() => setShowPreview(!showPreview)}
               className="bg-slate-700 hover:bg-slate-600 text-white font-semibold px-6 py-3 rounded-lg transition">
               {showPreview ? '👁️ Hide Preview' : '👁️ Show Preview'}
