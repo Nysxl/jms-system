@@ -63,10 +63,10 @@ export default function PortalInvoices() {
 
       try {
         const compRes = await supabase.from('company_settings').select('*').single();
-        setCompany(compRes.data || { company_name: 'Company Name' });
+        setCompany(compRes.data || { company_name: 'Company Name', show_logo: true, show_company_name: true, invoice_accent_color: '#3b82f6' });
       } catch (err) {
         console.warn('Failed to load company settings:', err);
-        setCompany({ company_name: 'Company Name' });
+        setCompany({ company_name: 'Company Name', show_logo: true, show_company_name: true, invoice_accent_color: '#3b82f6' });
       }
     } catch (err) {
       console.error('Failed to load invoice details:', err);
@@ -191,22 +191,24 @@ export default function PortalInvoices() {
               </div>
               <div className="overflow-y-auto flex-1 p-8 space-y-6">
                 <div id="invoice-document" className="bg-white">
-                <div className="flex items-start justify-between pb-6 border-b-2 border-slate-200">
+                <div className="flex items-start justify-between pb-6" style={{ borderBottom: `2px solid ${company.invoice_accent_color || '#3b82f6'}` }}>
                   <div className="flex items-center gap-4">
-                    {company.logo_url ? (
+                    {company.show_logo && company.logo_url ? (
                       <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
-                    ) : (
-                      <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                    ) : company.show_logo ? (
+                      <div style={{ backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="w-12 h-12 rounded-lg flex items-center justify-center">
                         <span className="text-white font-bold text-sm">logo</span>
                       </div>
+                    ) : null}
+                    {company.show_company_name && (
+                      <div>
+                        <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                        {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                      </div>
                     )}
-                    <div>
-                      <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
-                      {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
-                    </div>
                   </div>
                   <div className="text-right">
-                    <h2 className="text-2xl font-bold text-slate-900 mb-1">INVOICE</h2>
+                    <h2 style={{ color: company.invoice_accent_color || '#3b82f6' }} className="text-2xl font-bold mb-1">INVOICE</h2>
                     <p className="text-slate-600 font-medium text-sm">{selectedInvoice.invoice_number}</p>
                   </div>
                 </div>
