@@ -1,5 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { createClient } from '@supabase/supabase-js';
+import FormData from 'form-data';
+import Mailgun from 'mailgun.js';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -15,17 +17,12 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
   }
 
   try {
-    if (!process.env.RESEND_API_KEY) {
-      return res.status(501).json({ error: 'Email service not configured. Set RESEND_API_KEY environment variable and install resend: npm install resend' });
+    if (!process.env.MAILGUN_API_KEY || !process.env.MAILGUN_DOMAIN) {
+      return res.status(501).json({ error: 'Email service not configured. Set MAILGUN_API_KEY and MAILGUN_DOMAIN environment variables.' });
     }
 
-    // Dynamically import Resend - use @ts-ignore to suppress type errors when package not installed
-    // @ts-ignore
-    const { Resend } = await import('resend').catch(() => {
-      throw new Error('Resend package not installed. Run: npm install resend');
-    });
-
-    const resend = new Resend(process.env.RESEND_API_KEY);
+    const mailgun = new Mailgun(FormData);
+    const client = mailgun.client({ key: process.env.MAILGUN_API_KEY });
 
     // Fetch report + job + customer details
     const { data: report } = await supabase
@@ -100,16 +97,18 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       </html>
     `;
 
-    // Send email
-    const result = await resend.emails.send({
+    // Send email via Mailgun
+    const messageData = {
       from: `${companyName} <${fromEmail}>`,
       to: recipientEmail,
       subject: `Service Report: ${report.title}`,
       html,
-    });
+    };
 
-    if (result.error) {
-      return res.status(500).json({ error: result.error.message });
+    const result = await client.messages.create(process.env.MAILGUN_DOMAIN!, messageData);
+
+    if (!result.id) {
+      return res.status(500).json({ error: 'Failed to send email' });
     }
 
     return res.status(200).json({ success: true, message: `Report sent to ${recipientEmail}` });

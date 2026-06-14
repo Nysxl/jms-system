@@ -22,7 +22,8 @@
     "date-fns": "^2.30.0",
     "zustand": "^4.4.0",
     "axios": "^1.6.0",
-    "resend": "^3.0.0"
+    "mailgun.js": "^9.0.0",
+    "form-data": "^4.0.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
