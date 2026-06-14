@@ -587,82 +587,114 @@ export default function PortalJobDetail() {
         )}
 
         {/* Invoice Preview Modal */}
-        {selectedInvoice && invoiceJob && company && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center p-4 z-50 overflow-y-auto">
-            <div className="bg-slate-900 rounded-lg shadow-2xl w-full max-w-2xl my-8" id="invoice-document">
-              <div className="flex items-center justify-between p-6 border-b border-slate-700">
-                <h3 className="text-white text-lg font-semibold">Invoice #{selectedInvoice.invoice_number}</h3>
-                <button onClick={() => setSelectedInvoice(null)} className="text-slate-400 hover:text-white text-2xl">✕</button>
+        {selectedInvoice && invoiceJob && company && portalUser && (
+          <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 px-4 py-4">
+            <div className="bg-white rounded-xl w-full max-w-4xl max-h-[95vh] overflow-hidden flex flex-col shadow-2xl">
+              <div className="bg-slate-100 px-6 py-4 border-b border-slate-200 flex justify-between items-center sticky top-0">
+                <h3 className="text-lg font-semibold text-slate-900">{selectedInvoice.invoice_number}</h3>
+                <button onClick={() => setSelectedInvoice(null)} className="text-slate-500 hover:text-slate-700 text-2xl transition">✕</button>
               </div>
-              <div className="p-8 space-y-6">
-                {/* Header */}
-                <div className="border border-slate-300 rounded-lg p-6">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      <h2 className="text-2xl font-bold text-slate-900">INVOICE</h2>
-                      <p className="text-slate-600">{company.company_name}</p>
+              <div className="overflow-y-auto flex-1 p-8 space-y-6">
+                <div id="invoice-document" className="bg-white">
+                  <div className="border border-slate-300 rounded-lg p-6" style={{ borderBottom: `2px solid ${company.invoice_accent_color || '#3b82f6'}` }}>
+                    <div className="flex items-start justify-between pb-6">
+                      <div className="flex items-center gap-4">
+                        {company.show_logo && company.logo_url ? (
+                          <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
+                        ) : company.show_logo ? (
+                          <div style={{ backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="w-12 h-12 rounded-lg flex items-center justify-center">
+                            <span className="text-white font-bold text-sm">logo</span>
+                          </div>
+                        ) : null}
+                        {company.show_company_name && (
+                          <div>
+                            <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-right">
+                        <h2 style={{ color: company.invoice_accent_color || '#3b82f6' }} className="text-2xl font-bold mb-1">INVOICE</h2>
+                        <p className="text-slate-600 font-medium text-sm">{selectedInvoice.invoice_number}</p>
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <p className="font-semibold text-slate-900">Invoice #: {selectedInvoice.invoice_number}</p>
-                      <p className="text-slate-600">Date: {new Date(selectedInvoice.created_at).toLocaleDateString()}</p>
-                      <p className="text-slate-600">Due: {new Date(selectedInvoice.due_date).toLocaleDateString()}</p>
+
+                    <div className="grid grid-cols-2 gap-4 text-xs">
+                      <div>
+                        <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
+                        <p className="text-slate-700 font-semibold">{company.company_name}</p>
+                      </div>
+                      <div>
+                        <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
+                        <p className="text-slate-700 font-semibold">{portalUser.customer?.name || 'Customer'}</p>
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Job Details */}
-                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50">
-                  <div><span className="text-slate-500 text-xs">Job:</span> <span className="font-medium text-slate-800">{invoiceJob.title}</span></div>
-                </div>
+                  <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1 mt-8">
+                    <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{invoiceJob.title}</span></div>
+                    <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{new Date(selectedInvoice.due_date).toLocaleDateString()}</span></div>
+                  </div>
 
-                {/* Line Items */}
-                {invoiceItems.length > 0 && (
+                  <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-6"></div>
+
                   <div className="border border-slate-300 rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-slate-700 text-white">
+                    <table className="w-full text-xs">
+                      <thead style={{ backgroundColor: (company.invoice_accent_color || '#3b82f6') + '15' }}>
                         <tr>
-                          <th className="text-left p-3">Description</th>
-                          <th className="text-right p-3 w-24">Qty</th>
-                          <th className="text-right p-3 w-28">Unit Price</th>
-                          <th className="text-right p-3 w-28">Total</th>
+                          <th className="text-left px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Description</th>
+                          <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Qty</th>
+                          <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Unit Price</th>
+                          <th className="text-right px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Total</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {invoiceItems.map((item: any) => (
-                          <tr key={item.id} className="border-t border-slate-300">
-                            <td className="p-3 text-slate-800">{item.description}</td>
-                            <td className="text-right p-3 text-slate-800">{item.quantity}</td>
-                            <td className="text-right p-3 text-slate-800">${parseFloat(item.unit_price || 0).toFixed(2)}</td>
-                            <td className="text-right p-3 text-slate-800">${parseFloat(item.total || 0).toFixed(2)}</td>
+                        {invoiceItems.length === 0 ? (
+                          <tr><td colSpan={4} className="px-2 py-3 text-center text-slate-400">No line items</td></tr>
+                        ) : invoiceItems.map((item: any, idx: number) => (
+                          <tr key={idx} className={`border-t border-slate-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50'}`}>
+                            <td className="px-2 py-2 text-slate-700">{item.description}</td>
+                            <td className="text-right px-2 py-2 text-slate-700">{item.quantity}</td>
+                            <td className="text-right px-2 py-2 text-slate-700">${parseFloat(item.unit_price || 0).toFixed(2)}</td>
+                            <td className="text-right px-2 py-2 font-medium text-slate-900">${parseFloat(item.total || 0).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
                   </div>
-                )}
 
-                {/* Totals */}
-                <div className="border border-slate-300 rounded-lg p-4 flex justify-end">
-                  <div className="w-64">
-                    <div className="flex justify-between text-slate-800 mb-2">
-                      <span>Subtotal:</span>
-                      <span>${parseFloat(selectedInvoice.subtotal || 0).toFixed(2)}</span>
-                    </div>
-                    {selectedInvoice.tax > 0 && (
-                      <div className="flex justify-between text-slate-800 mb-2">
-                        <span>Tax:</span>
-                        <span>${parseFloat(selectedInvoice.tax || 0).toFixed(2)}</span>
+                  <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
+
+                  <div className="border border-slate-300 rounded-lg p-4 flex justify-end">
+                    <div className="w-40">
+                      <div className="flex justify-between text-slate-600 pb-1">
+                        <span>Subtotal:</span>
+                        <span>${parseFloat(selectedInvoice.subtotal || 0).toFixed(2)}</span>
                       </div>
-                    )}
-                    <div className="flex justify-between font-semibold text-lg border-t border-slate-300 pt-2" style={{ color: company.invoice_accent_color }}>
-                      <span>Total:</span>
-                      <span>${parseFloat(selectedInvoice.total || 0).toFixed(2)}</span>
+                      <div className="flex justify-between text-slate-600 pb-2">
+                        <span>Tax:</span>
+                        <span>${parseFloat(selectedInvoice.tax_amount || selectedInvoice.tax || 0).toFixed(2)}</span>
+                      </div>
+                      <div className="flex justify-between font-bold pt-2 text-xs" style={{ borderTop: `2px solid ${company.invoice_accent_color || '#3b82f6'}`, color: company.invoice_accent_color || '#3b82f6' }}>
+                        <span>Total:</span>
+                        <span>${parseFloat(selectedInvoice.total_amount || selectedInvoice.total || 0).toFixed(2)}</span>
+                      </div>
                     </div>
                   </div>
+
+                  <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
+
+                  <div className="bg-slate-50 border border-slate-300 rounded-lg p-4 text-xs">
+                    <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
+                    <p className="text-slate-600 mb-2">Status: <span className="font-medium capitalize">{selectedInvoice.status}</span></p>
+                    {company.bsb || company.account_number ? (
+                      <div className="bg-white border border-slate-200 rounded p-2 text-slate-700 mt-2">
+                        <p className="font-semibold mb-1">Bank Transfer</p>
+                        {company.bsb && <p><span className="text-slate-500">BSB:</span> {company.bsb}</p>}
+                        {company.account_number && <p><span className="text-slate-500">Account:</span> {company.account_number}</p>}
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
-              </div>
-              <div className="p-6 border-t border-slate-700 flex gap-3">
-                <button onClick={() => setSelectedInvoice(null)} className="flex-1 bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg transition">Close</button>
               </div>
             </div>
           </div>
