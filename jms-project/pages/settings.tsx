@@ -201,6 +201,23 @@ export default function Settings() {
               </div>
             </div>
 
+            {/* Email Configuration */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <h3 className="text-white font-semibold mb-2">📧 Email Configuration</h3>
+              <p className="text-slate-400 text-sm mb-4">This email will be used as the sender for all invoices and notifications</p>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1">Sender Email Address</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="info@company.com.au"
+                  className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                />
+                <p className="text-slate-500 text-xs mt-2">Example: invoices@yourcompany.com.au</p>
+              </div>
+            </div>
+
             {/* Company Details */}
             <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
               <h3 className="text-white font-semibold mb-4">Company Details</h3>
@@ -222,16 +239,6 @@ export default function Settings() {
                     value={form.owner_name}
                     onChange={e => setForm({ ...form, owner_name: e.target.value })}
                     placeholder="Brian Greyling"
-                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
-                  />
-                </div>
-                <div>
-                  <label className="block text-slate-300 text-sm font-medium mb-1">Email</label>
-                  <input
-                    type="email"
-                    value={form.email}
-                    onChange={e => setForm({ ...form, email: e.target.value })}
-                    placeholder="info@company.com.au"
                     className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
