@@ -17,6 +17,9 @@ const emptySettings = {
   logo_url: '',
   bsb: '',
   account_number: '',
+  show_company_name: true,
+  show_logo: true,
+  invoice_accent_color: '#3b82f6',
 };
 
 export default function Settings() {
@@ -60,6 +63,9 @@ export default function Settings() {
         logo_url: data.logo_url || '',
         bsb: data.bsb || '',
         account_number: data.account_number || '',
+        show_company_name: data.show_company_name !== false,
+        show_logo: data.show_logo !== false,
+        invoice_accent_color: data.invoice_accent_color || '#3b82f6',
       });
       if (data.logo_url) setLogoPreview(data.logo_url);
     }
@@ -336,6 +342,50 @@ export default function Settings() {
                     placeholder="12345678"
                     className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   />
+                </div>
+              </div>
+            </div>
+
+            {/* Invoice Customization */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <h3 className="text-white font-semibold mb-4">Invoice Customization</h3>
+              <p className="text-slate-400 text-sm mb-4">Control how your invoices appear to customers</p>
+              <div className="space-y-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.show_logo}
+                    onChange={e => setForm({ ...form, show_logo: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="text-slate-300">Show company logo on invoices</span>
+                </label>
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.show_company_name}
+                    onChange={e => setForm({ ...form, show_company_name: e.target.checked })}
+                    className="w-4 h-4 rounded border-slate-600 bg-slate-900 text-blue-500 focus:ring-blue-500 cursor-pointer"
+                  />
+                  <span className="text-slate-300">Show company name on invoices</span>
+                </label>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-2">Invoice Accent Color</label>
+                  <div className="flex gap-3 items-center">
+                    <input
+                      type="color"
+                      value={form.invoice_accent_color}
+                      onChange={e => setForm({ ...form, invoice_accent_color: e.target.value })}
+                      className="w-12 h-10 rounded cursor-pointer border border-slate-600"
+                    />
+                    <input
+                      type="text"
+                      value={form.invoice_accent_color}
+                      onChange={e => setForm({ ...form, invoice_accent_color: e.target.value })}
+                      placeholder="#3b82f6"
+                      className="flex-1 bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                    />
+                  </div>
                 </div>
               </div>
             </div>
