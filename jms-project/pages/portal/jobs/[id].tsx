@@ -197,6 +197,22 @@ export default function PortalJobDetail() {
     }
   };
 
+  const handleDeleteAttachment = async (attachment: JobAttachment) => {
+    if (!confirm('Delete this file?')) return;
+    try {
+      const path = attachment.file_url.split('/job-attachments/')[1];
+      if (path) {
+        await supabase.storage.from('job-attachments').remove([decodeURIComponent(path)]);
+      }
+      const { error } = await supabase.from('job_attachments').delete().eq('id', attachment.id);
+      if (error) throw error;
+      setAttachments(attachments.filter(a => a.id !== attachment.id));
+    } catch (err) {
+      console.error('Delete error:', err);
+      alert('Failed to delete file');
+    }
+  };
+
   const handleSignature = async () => {
     if (!canvasRef.current) return;
     const canvas = canvasRef.current;
@@ -424,6 +440,8 @@ export default function PortalJobDetail() {
                         <span className="text-slate-400 text-xs flex-shrink-0">👤</span>
                       </div>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
+                      <button onClick={() => handleDeleteAttachment(att as any)}
+                        className="w-full bg-red-600 hover:bg-red-500 text-white text-xs px-2 py-1.5 rounded transition">Delete</button>
                     </div>
                   </div>
                 ))}
