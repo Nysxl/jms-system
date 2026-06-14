@@ -215,51 +215,54 @@ export default function PortalInvoices() {
               </div>
               <div className="overflow-y-auto flex-1 p-8 space-y-6">
                 <div id="invoice-document" className="bg-white">
-                <div className="flex items-start justify-between pb-6" style={{ borderBottom: `2px solid ${company.invoice_accent_color || '#3b82f6'}` }}>
-                  <div className="flex items-center gap-4">
-                    {company.show_logo && company.logo_url ? (
-                      <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
-                    ) : company.show_logo ? (
-                      <div style={{ backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="w-12 h-12 rounded-lg flex items-center justify-center">
-                        <span className="text-white font-bold text-sm">logo</span>
-                      </div>
-                    ) : null}
-                    {company.show_company_name && (
-                      <div>
-                        <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
-                        {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
-                      </div>
-                    )}
+                <div className="border border-slate-300 rounded-lg p-6" style={{ borderBottom: `2px solid ${company.invoice_accent_color || '#3b82f6'}` }}>
+                  <div className="flex items-start justify-between pb-6">
+                    <div className="flex items-center gap-4">
+                      {company.show_logo && company.logo_url ? (
+                        <img src={company.logo_url} alt="logo" className="h-12 w-auto object-contain" />
+                      ) : company.show_logo ? (
+                        <div style={{ backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="w-12 h-12 rounded-lg flex items-center justify-center">
+                          <span className="text-white font-bold text-sm">logo</span>
+                        </div>
+                      ) : null}
+                      {company.show_company_name && (
+                        <div>
+                          <h1 className="text-lg font-bold text-slate-900">{company.company_name}</h1>
+                          {company.owner_name && <p className="text-slate-600 text-xs">{company.owner_name}</p>}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <h2 style={{ color: company.invoice_accent_color || '#3b82f6' }} className="text-2xl font-bold mb-1">INVOICE</h2>
+                      <p className="text-slate-600 font-medium text-sm">{selectedInvoice.invoice_number}</p>
+                    </div>
                   </div>
-                  <div className="text-right">
-                    <h2 style={{ color: company.invoice_accent_color || '#3b82f6' }} className="text-2xl font-bold mb-1">INVOICE</h2>
-                    <p className="text-slate-600 font-medium text-sm">{selectedInvoice.invoice_number}</p>
+
+                  <div className="grid grid-cols-2 gap-4 text-xs">
+                    <div>
+                      <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
+                      <p className="text-slate-700 font-semibold">{company.company_name}</p>
+                      {company.address && <p className="text-slate-600">{company.address}</p>}
+                      {company.phone && <p className="text-slate-600">{company.phone}</p>}
+                    </div>
+                    <div>
+                      <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
+                      <p className="text-slate-700 font-semibold">{portalUser?.customer?.name}</p>
+                      {portalUser?.customer?.company_name && <p className="text-slate-600">{portalUser.customer.company_name}</p>}
+                      {portalUser?.customer?.phone && <p className="text-slate-600">{portalUser.customer.phone}</p>}
+                    </div>
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-xs">
-                  <div>
-                    <h3 className="text-slate-500 font-semibold mb-1">FROM</h3>
-                    <p className="text-slate-700 font-semibold">{company.company_name}</p>
-                    {company.address && <p className="text-slate-600">{company.address}</p>}
-                    {company.phone && <p className="text-slate-600">{company.phone}</p>}
-                  </div>
-                  <div>
-                    <h3 className="text-slate-500 font-semibold mb-1">BILL TO</h3>
-                    <p className="text-slate-700 font-semibold">{portalUser?.customer?.name}</p>
-                    {portalUser?.customer?.company_name && <p className="text-slate-600">{portalUser.customer.company_name}</p>}
-                    {portalUser?.customer?.phone && <p className="text-slate-600">{portalUser.customer.phone}</p>}
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded p-3 border border-slate-200 text-xs space-y-1">
+                <div className="border border-slate-300 rounded-lg p-3 bg-slate-50 text-xs space-y-1">
                   <div><span className="text-slate-500">Job:</span> <span className="font-medium text-slate-800">{invoiceJob.title}</span></div>
                   <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{new Date(selectedInvoice.due_date).toLocaleDateString()}</span></div>
                 </div>
 
                 <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
 
-                <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
+                <div className="border border-slate-300 rounded-lg overflow-hidden">
+                <table className="w-full text-xs">
                   <thead style={{ backgroundColor: (company.invoice_accent_color || '#3b82f6') + '15' }}>
                     <tr>
                       <th className="text-left px-2 py-2 font-semibold" style={{ color: company.invoice_accent_color || '#3b82f6' }}>Description</th>
@@ -281,10 +284,11 @@ export default function PortalInvoices() {
                     ))}
                   </tbody>
                 </table>
+                </div>
 
                 <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
 
-                <div className="flex justify-end text-xs space-y-1">
+                <div className="border border-slate-300 rounded-lg p-4 flex justify-end">
                   <div className="w-40">
                     <div className="flex justify-between text-slate-600 pb-1">
                       <span>Subtotal:</span>
@@ -294,7 +298,7 @@ export default function PortalInvoices() {
                       <span>Tax:</span>
                       <span>${(selectedInvoice.tax_amount || 0).toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between font-bold pt-2" style={{ borderTop: `2px solid ${company.invoice_accent_color || '#3b82f6'}`, color: company.invoice_accent_color || '#3b82f6' }}>
+                    <div className="flex justify-between font-bold pt-2 text-xs" style={{ borderTop: `2px solid ${company.invoice_accent_color || '#3b82f6'}`, color: company.invoice_accent_color || '#3b82f6' }}>
                       <span>Total:</span>
                       <span>${(selectedInvoice.total_amount || 0).toFixed(2)}</span>
                     </div>
@@ -303,7 +307,7 @@ export default function PortalInvoices() {
 
                 <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
 
-                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
+                <div className="bg-slate-50 border border-slate-300 rounded-lg p-4 text-xs">
                   <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
                   <p className="text-slate-600 mb-2">Status: <span className="font-medium capitalize">{selectedInvoice.status}</span></p>
                   {selectedInvoice.amount_paid > 0 && (
