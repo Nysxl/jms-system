@@ -349,8 +349,8 @@ export default function PortalJobDetail() {
                   <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
                     <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -371,8 +371,8 @@ export default function PortalJobDetail() {
                   <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
                     <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -393,10 +393,8 @@ export default function PortalJobDetail() {
                     <div className="p-3 flex-1 flex flex-col">
                       <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      <div className="flex gap-1">
-                        <a href={att.file_url} download={att.file_name}
-                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
-                      </div>
+                      <a href={att.file_url} download={att.file_name}
+                        className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -421,10 +419,8 @@ export default function PortalJobDetail() {
                     <div className="p-3 flex-1 flex flex-col">
                       <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
                       <p className="text-slate-500 text-xs mb-3 flex-1">{(att.file_size / 1024).toFixed(1)} KB</p>
-                      <div className="flex gap-1">
-                        <a href={att.file_url} download={att.file_name}
-                          className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
-                      </div>
+                      <a href={att.file_url} download={att.file_name}
+                        className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}
@@ -458,8 +454,8 @@ export default function PortalJobDetail() {
                   <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
                     <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" />
                     <div className="p-2 flex gap-2">
-                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
-                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
+                      <button onClick={() => {}} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
+                      <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                     </div>
                   </div>
                 ))}

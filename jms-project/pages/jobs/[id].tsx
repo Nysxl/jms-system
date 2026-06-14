@@ -873,9 +873,9 @@ export default function JobDetail() {
                       {images.filter(img => img.author_type === 'portal_user').map(img => (
                         <div key={img.id} className="bg-slate-700 rounded-lg overflow-hidden">
                           <img src={img.image_url} alt={img.file_name} className="w-full aspect-square object-cover cursor-pointer hover:opacity-90 transition" onClick={() => setLightbox(img.image_url)} />
-                          <div className="p-2 flex gap-2 items-center justify-center">
-                            <button onClick={() => setLightbox(img.image_url)} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁 View</button>
-                            <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓ Download</a>
+                          <div className="p-2 flex gap-2">
+                            <button onClick={() => setLightbox(img.image_url)} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
+                            <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                           </div>
                         </div>
                       ))}
@@ -906,16 +906,16 @@ export default function JobDetail() {
                                 {img.display_timestamp && img.display_timestamp !== img.uploaded_at && <span className="ml-1 text-yellow-600">✎</span>}
                               </button>
                             )}
-                            <div className="flex gap-2">
-                              <button onClick={() => setLightbox(img.image_url)} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">👁</button>
-                              <a href={img.image_url} download={img.file_name} className="flex-1 bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">↓</a>
+                            <div className="grid grid-cols-2 gap-2">
+                              <button onClick={() => setLightbox(img.image_url)} className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition">View</button>
+                              <a href={img.image_url} download={img.file_name} className="bg-slate-600 hover:bg-slate-500 text-white text-xs px-2 py-1.5 rounded transition text-center">Download</a>
                               <button onClick={async () => {
                                 await supabase.from('job_images').update({ is_internal: !(img.is_internal as any) }).eq('id', img.id);
                                 loadImages();
-                              }} className={`flex-1 text-white text-xs px-2 py-1.5 rounded transition ${(img.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
-                                {(img.is_internal as any) ? '🔒' : '👁'}
+                              }} className={`text-white text-xs px-2 py-1.5 rounded transition ${(img.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500' : 'bg-blue-600 hover:bg-blue-500'}`}>
+                                {(img.is_internal as any) ? 'Hide' : 'Show'}
                               </button>
-                              <button onClick={() => handleDeletePhoto(img)} className="flex-1 bg-red-600 hover:bg-red-500 text-white text-xs px-2 py-1.5 rounded transition">✕</button>
+                              <button onClick={() => handleDeletePhoto(img)} className="bg-red-600 hover:bg-red-500 text-white text-xs px-2 py-1.5 rounded transition">Delete</button>
                             </div>
                           </div>
                         </div>
@@ -969,20 +969,20 @@ export default function JobDetail() {
                           <div className="p-3 flex-1 flex flex-col">
                             <p className="text-white text-xs font-medium truncate mb-1">{att.file_name}</p>
                             <p className="text-slate-500 text-xs mb-3 flex-1">{formatSize(att.file_size)}</p>
-                            <div className="flex gap-1 flex-col text-xs">
+                            <div className="flex gap-1 flex-col text-xs space-y-1">
                               <div className="flex gap-1">
                                 {att.file_type === 'application/pdf' ? (
                                   <button onClick={() => setPreviewAttachment(att)}
-                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">👁</button>
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">View</button>
                                 ) : att.file_type.startsWith('image/') ? (
                                   <button onClick={() => setLightbox(att.file_url)}
-                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">👁</button>
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition">View</button>
                                 ) : (
                                   <a href={att.file_url} target="_blank" rel="noopener noreferrer"
-                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">↗</a>
+                                    className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">Open</a>
                                 )}
                                 <a href={att.file_url} download={att.file_name}
-                                  className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">↓</a>
+                                  className="flex-1 bg-slate-600 hover:bg-slate-500 text-white px-2 py-1.5 rounded transition text-center">Download</a>
                               </div>
                               <div className="flex gap-1">
                                 <button onClick={async () => {
@@ -990,10 +990,10 @@ export default function JobDetail() {
                                   loadAttachments();
                                 }}
                                   className={`flex-1 px-2 py-1.5 rounded transition ${(att.is_internal as any) ? 'bg-orange-600 hover:bg-orange-500 text-white' : 'bg-blue-600 hover:bg-blue-500 text-white'}`}>
-                                  {(att.is_internal as any) ? '🔒' : '👁'}
+                                  {(att.is_internal as any) ? 'Hide' : 'Show'}
                                 </button>
                                 <button onClick={() => handleDeleteAttachment(att)}
-                                  className="flex-1 bg-red-600 hover:bg-red-500 text-white px-2 py-1.5 rounded transition">✕</button>
+                                  className="flex-1 bg-red-600 hover:bg-red-500 text-white px-2 py-1.5 rounded transition">Delete</button>
                               </div>
                             </div>
                           </div>
