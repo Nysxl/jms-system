@@ -89,6 +89,7 @@ export default function JobDetail() {
   const [showVisitModal, setShowVisitModal] = useState(false);
   const [visitForm, setVisitForm] = useState({ scheduled_date: '', duration_hours: '', notes: '' });
   const [savingVisit, setSavingVisit] = useState(false);
+  const [sendingInvoiceEmail, setSendingInvoiceEmail] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Notes
@@ -190,6 +191,27 @@ export default function JobDetail() {
   const loadInvoices = async () => {
     const { data } = await supabase.from('invoices').select('*').eq('job_id', id).order('created_at', { ascending: false });
     if (data) setInvoices(data);
+  };
+
+  const sendInvoiceEmail = async (invoice: any) => {
+    setSendingInvoiceEmail(invoice.id);
+    try {
+      const response = await fetch('/api/email/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          recipientEmail: invoice.customer?.email || customer?.email || '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      alert(`Invoice sent to ${invoice.customer?.email || customer?.email}`);
+    } catch (err: any) {
+      alert(`Failed to send invoice: ${err.message}`);
+    } finally {
+      setSendingInvoiceEmail(null);
+    }
   };
 
   const loadVisits = async () => {
@@ -750,21 +772,30 @@ export default function JobDetail() {
                     <div className="mt-4 space-y-2">
                       <p className="text-slate-400 text-xs font-semibold uppercase tracking-wide">Saved Invoices</p>
                       {invoices.map((inv: any) => (
-                        <Link key={inv.id} href={`/invoices/edit/${inv.id}`}
-                          className="flex items-center justify-between bg-slate-900 rounded-lg px-3 py-2 hover:bg-slate-700 transition">
+                        <div key={inv.id} className="bg-slate-900 rounded-lg px-3 py-2 flex items-center justify-between group">
                           <div>
                             <p className="text-white text-sm font-medium">{inv.invoice_number}</p>
                             <p className="text-slate-500 text-xs">{new Date(inv.created_at).toLocaleDateString()}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="text-white text-sm font-semibold">${(inv.total_amount || 0).toFixed(2)}</p>
-                            <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                              inv.status === 'paid' ? 'bg-green-500/20 text-green-400' :
-                              inv.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
-                              'bg-slate-600 text-slate-400'
-                            }`}>{inv.status}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="text-right mr-2">
+                              <p className="text-white text-sm font-semibold">${(inv.total_amount || 0).toFixed(2)}</p>
+                              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                                inv.status === 'paid' ? 'bg-green-500/20 text-green-400' :
+                                inv.status === 'sent' ? 'bg-blue-500/20 text-blue-400' :
+                                'bg-slate-600 text-slate-400'
+                              }`}>{inv.status}</span>
+                            </div>
+                            <button onClick={() => router.push(`/invoices/edit/${inv.id}`)}
+                              className="text-slate-300 hover:text-white text-xs font-medium transition">
+                              ✏️ Open
+                            </button>
+                            <button onClick={() => sendInvoiceEmail(inv)} disabled={sendingInvoiceEmail === inv.id}
+                              className="text-green-400 hover:text-green-300 disabled:opacity-50 text-xs font-medium transition">
+                              {sendingInvoiceEmail === inv.id ? '📧 Sending...' : '📧 Email'}
+                            </button>
                           </div>
-                        </Link>
+                        </div>
                       ))}
                     </div>
                   )}

@@ -20,6 +20,7 @@ export default function InvoicesPage() {
   const [paymentError, setPaymentError] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState<string | null>(null);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -48,6 +49,27 @@ export default function InvoicesPage() {
     });
     setPaymentError('');
     setShowPaymentModal(true);
+  };
+
+  const sendInvoiceEmail = async (invoice: Invoice & { customer?: Customer }) => {
+    setSendingEmail(invoice.id);
+    try {
+      const response = await fetch('/api/email/send-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          invoiceId: invoice.id,
+          recipientEmail: invoice.customer?.email || '',
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error);
+      alert(`Invoice sent to ${invoice.customer?.email}`);
+    } catch (err: any) {
+      alert(`Failed to send invoice: ${err.message}`);
+    } finally {
+      setSendingEmail(null);
+    }
   };
 
   const savePayment = async (e: React.FormEvent) => {
@@ -194,6 +216,10 @@ export default function InvoicesPage() {
                             <button onClick={() => router.push(`/invoices/edit/${inv.id}`)}
                               className="text-slate-300 hover:text-white text-xs font-medium transition">
                               ✏️ Open
+                            </button>
+                            <button onClick={() => sendInvoiceEmail(inv)} disabled={sendingEmail === inv.id}
+                              className="text-green-400 hover:text-green-300 disabled:opacity-50 text-xs font-medium transition">
+                              {sendingEmail === inv.id ? '📧 Sending...' : '📧 Email'}
                             </button>
                             <button onClick={() => openPaymentModal(inv)}
                               className="text-blue-400 hover:text-blue-300 text-xs font-medium transition">
