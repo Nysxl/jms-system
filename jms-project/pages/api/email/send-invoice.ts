@@ -36,12 +36,17 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
 
     if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
 
-    // Get authenticated user's email
-    const { data: { user } } = await supabase.auth.admin.getUserById(invoice.user_id);
-    const fromEmail = user?.email;
+    // Get authenticated user's email from auth.users table
+    const { data: authUsers } = await supabase
+      .from('auth.users')
+      .select('id, email')
+      .eq('id', invoice.user_id)
+      .single();
+
+    const fromEmail = authUsers?.email;
 
     if (!fromEmail) {
-      return res.status(400).json({ error: 'User email not found.' });
+      return res.status(400).json({ error: 'User email not configured in authentication.' });
     }
 
     // Fetch company settings
