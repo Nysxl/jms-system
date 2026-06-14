@@ -161,6 +161,8 @@ export interface Invoice {
   amount_paid?: number; // support partial payments
   payment_notes?: string;
   notes?: string;
+  last_email_sent_at?: string; // timestamp when email was last sent
+  last_viewed_at?: string; // timestamp when customer last viewed
   items?: InvoiceItem[];
   created_at: string;
   updated_at: string;
