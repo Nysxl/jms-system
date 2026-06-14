@@ -233,6 +233,8 @@ export default function PortalInvoices() {
                   <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{new Date(selectedInvoice.due_date).toLocaleDateString()}</span></div>
                 </div>
 
+                <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
+
                 <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
                   <thead style={{ backgroundColor: company.invoice_accent_color || '#3b82f6', backgroundOpacity: 0.1 }}>
                     <tr>
@@ -256,6 +258,8 @@ export default function PortalInvoices() {
                   </tbody>
                 </table>
 
+                <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
+
                 <div className="flex justify-end text-xs space-y-1">
                   <div className="w-40">
                     <div className="flex justify-between text-slate-600 pb-1">
@@ -272,6 +276,8 @@ export default function PortalInvoices() {
                     </div>
                   </div>
                 </div>
+
+                <div style={{ height: '2px', backgroundColor: company.invoice_accent_color || '#3b82f6' }} className="my-4"></div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
                   <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>

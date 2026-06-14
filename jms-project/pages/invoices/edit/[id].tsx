@@ -469,6 +469,8 @@ export default function EditInvoice() {
                   <div><span className="text-slate-500">Due:</span> <span className="text-slate-800">{formatDate(invoice.due_date)}</span></div>
                 </div>
 
+                <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
+
                 <table className="w-full text-xs border border-slate-200 rounded overflow-hidden">
                   <thead style={{ backgroundColor: accentColor }}>
                     <tr>
@@ -492,6 +494,8 @@ export default function EditInvoice() {
                   </tbody>
                 </table>
 
+                <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
+
                 <div className="flex justify-end text-xs space-y-1">
                   <div className="w-40">
                     <div className="flex justify-between text-slate-600 pb-1">
@@ -508,6 +512,8 @@ export default function EditInvoice() {
                     </div>
                   </div>
                 </div>
+
+                <div style={{ height: '2px', backgroundColor: accentColor }} className="my-4"></div>
 
                 <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 text-xs">
                   <h4 className="font-semibold text-slate-700 mb-2">Payment Details</h4>
