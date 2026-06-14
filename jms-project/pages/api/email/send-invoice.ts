@@ -36,7 +36,15 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
 
     if (!invoice) return res.status(404).json({ error: 'Invoice not found.' });
 
-    // Fetch company settings first
+    // Get authenticated user's email
+    const { data: { user } } = await supabase.auth.admin.getUserById(invoice.user_id);
+    const fromEmail = user?.email;
+
+    if (!fromEmail) {
+      return res.status(400).json({ error: 'User email not found.' });
+    }
+
+    // Fetch company settings
     const { data: settings } = await supabase
       .from('company_settings')
       .select('*')
@@ -44,17 +52,6 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       .single();
 
     const companyName = settings?.company_name || 'Service Invoice';
-
-    // Use email from settings, fall back to authenticated user's email
-    let fromEmail = settings?.email;
-    if (!fromEmail) {
-      const { data: { user } } = await supabase.auth.admin.getUserById(invoice.user_id);
-      fromEmail = user?.email;
-    }
-
-    if (!fromEmail) {
-      return res.status(400).json({ error: 'No email configured. Please set an email in Settings.' });
-    }
 
     // Generate HTML invoice
     const html = `
