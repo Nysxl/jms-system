@@ -36,19 +36,6 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
 
     if (!report) return res.status(404).json({ error: 'Report not found.' });
 
-    // Get authenticated user's email from auth.users table
-    const { data: authUsers } = await supabase
-      .from('auth.users')
-      .select('id, email')
-      .eq('id', report.user_id)
-      .single();
-
-    const fromEmail = authUsers?.email;
-
-    if (!fromEmail) {
-      return res.status(400).json({ error: 'User email not configured in authentication.' });
-    }
-
     // Fetch company settings
     const { data: settings } = await supabase
       .from('company_settings')
@@ -57,6 +44,21 @@ export default async function handler(_req: NextApiRequest, res: NextApiResponse
       .single();
 
     const companyName = settings?.company_name || 'Service Report';
+
+    // Get authenticated user's email using admin API
+    let fromEmail = '';
+    try {
+      const { data, error } = await supabase.auth.admin.getUserById(report.user_id);
+      if (error) throw error;
+      fromEmail = data?.user?.email || '';
+    } catch (err: any) {
+      console.error('Failed to get user email:', err);
+      return res.status(400).json({ error: `Failed to get user email: ${err.message}` });
+    }
+
+    if (!fromEmail) {
+      return res.status(400).json({ error: 'User email not found in authentication system.' });
+    }
 
     // Generate HTML report
     const html = `
