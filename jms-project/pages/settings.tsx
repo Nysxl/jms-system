@@ -15,6 +15,8 @@ const emptySettings = {
   abn: '',
   website: '',
   logo_url: '',
+  bsb: '',
+  account_number: '',
 };
 
 export default function Settings() {
@@ -56,6 +58,8 @@ export default function Settings() {
         abn: data.abn || '',
         website: data.website || '',
         logo_url: data.logo_url || '',
+        bsb: data.bsb || '',
+        account_number: data.account_number || '',
       });
       if (data.logo_url) setLogoPreview(data.logo_url);
     }
@@ -302,6 +306,34 @@ export default function Settings() {
                     value={form.website}
                     onChange={e => setForm({ ...form, website: e.target.value })}
                     placeholder="www.company.com.au"
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Details */}
+            <div className="bg-slate-800 border border-slate-700 rounded-xl p-6">
+              <h3 className="text-white font-semibold mb-4">Payment Details</h3>
+              <p className="text-slate-400 text-sm mb-4">Bank details shown on invoices for customer payments</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">BSB</label>
+                  <input
+                    type="text"
+                    value={form.bsb}
+                    onChange={e => setForm({ ...form, bsb: e.target.value })}
+                    placeholder="123 456"
+                    className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
+                  />
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1">Account Number</label>
+                  <input
+                    type="text"
+                    value={form.account_number}
+                    onChange={e => setForm({ ...form, account_number: e.target.value })}
+                    placeholder="12345678"
                     className="w-full bg-slate-900 border border-slate-600 text-white rounded-lg px-3 py-2 text-sm placeholder-slate-500 focus:outline-none focus:border-blue-500 transition"
                   />
                 </div>
